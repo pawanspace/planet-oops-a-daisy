@@ -91,6 +91,14 @@ export class Sound {
   eat(): void { [0, 0.15, 0.3].forEach(d => this.tone('triangle', 220, 140, 0.1, 0.12, d)); }
   wake(): void { this.tone('sine', 200, 500, 0.5, 0.12, 0, 'lin'); }
   checkpoint(): void { this.tone('sine', 660, 990, 0.2, 0.1, 0, 'lin'); }
+  /** Alien gibberish: a few quick blips at a pitch. */
+  voice(pitch = 1): void {
+    const notes = [1, 1.25, 0.9, 1.4, 1.1];
+    for (let i = 0; i < 4; i++) {
+      const f = 260 * pitch * notes[(i * 3 + Math.round(pitch * 10)) % notes.length];
+      this.tone('square', f, f * 1.15, 0.07, 0.05, i * 0.08);
+    }
+  }
   hug(): void { [523, 659, 784].forEach((f, i) => this.tone('sine', f, f * 1.02, 0.18, 0.12, i * 0.09)); this.tone('triangle', 300, 200, 0.6, 0.08, 0.3); }
   beep(): void { [0, 0.18].forEach(d => this.tone('square', 1200, 1200, 0.1, 0.08, d)); }
   alarm(): void { [0, 0.35, 0.7].forEach(d => { this.tone('sawtooth', 600, 900, 0.17, 0.1, d, 'lin'); this.tone('sawtooth', 900, 600, 0.17, 0.1, d + 0.17, 'lin'); }); }
