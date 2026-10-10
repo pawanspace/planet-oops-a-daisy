@@ -1,12 +1,23 @@
-// Procedural sound effects (Web Audio) + background music. Ported from the legacy game, plus new chase sounds.
+// Procedural sound effects (Web Audio) + background music (CC0 tracks by Juhani Junkala, see public/music/CREDITS.txt).
 
 type Wave = OscillatorType;
+export type TrackId = 'menu' | 'suburbia' | 'school' | 'market' | 'spaceport' | 'chase' | 'story' | 'ending';
+export type Surface = 'grass' | 'tile' | 'stone' | 'metal' | 'carpet';
+
+const MUSIC_VOL = 0.4;
+
+/** One looping music track routed through Web Audio so its volume can fade (iOS ignores element.volume). */
+interface Track { el: HTMLAudioElement; gain: GainNode }
 
 export class Sound {
   private ctx: AudioContext | null = null;
-  private music: HTMLAudioElement | null = null;
+  private tracks = new Map<TrackId, Track>();
+  private main: TrackId | null = null;
+  private layer: TrackId | null = null;
+  private layerOn = false;
+  private wanted: { main: TrackId; layer: TrackId | null } | null = null;
   sfxOn = true;
-  musicOn = true;
+  musicOn = localStorage.getItem('oops.music') !== 'off';
 
   /** Must be called from a user gesture (iOS). */
   unlock(): void {
@@ -15,18 +26,64 @@ export class Sound {
       if (Ctx) this.ctx = new Ctx();
     }
     if (this.ctx?.state === 'suspended') void this.ctx.resume();
-    if (!this.music) {
-      this.music = new Audio('music.mp3');
-      this.music.loop = true;
-      this.music.volume = 0.35;
+    if (this.wanted && !this.main) this.music(this.wanted.main, this.wanted.layer);
+  }
+
+  private track(id: TrackId): Track | null {
+    const ctx = this.ctx;
+    if (!ctx) return null;
+    let tr = this.tracks.get(id);
+    if (!tr) {
+      const el = new Audio(`music/${id}.mp3`);
+      el.loop = true;
+      el.preload = 'auto';
+      el.crossOrigin = 'anonymous';
+      const gain = ctx.createGain();
+      gain.gain.value = 0;
+      ctx.createMediaElementSource(el).connect(gain).connect(ctx.destination);
+      tr = { el, gain };
+      this.tracks.set(id, tr);
     }
-    if (this.musicOn) void this.music.play().catch(() => {});
+    return tr;
+  }
+
+  private fade(tr: Track, to: number, secs: number): void {
+    const ctx = this.ctx!;
+    const g = tr.gain.gain;
+    g.cancelScheduledValues(ctx.currentTime);
+    g.setValueAtTime(g.value, ctx.currentTime);
+    g.linearRampToValueAtTime(to, ctx.currentTime + secs);
+    if (to > 0 && tr.el.paused) void tr.el.play().catch(() => {});
+    if (to === 0) setTimeout(() => { if (tr.gain.gain.value < 0.01) tr.el.pause(); }, secs * 1000 + 100);
+  }
+
+  /** Switch background music: a main track plus an optional "chase" layer that fades in on demand. */
+  music(main: TrackId, layer: TrackId | null = null): void {
+    this.wanted = { main, layer };
+    if (!this.ctx || !this.musicOn) return;
+    for (const [id, tr] of this.tracks) if (id !== main && id !== layer) this.fade(tr, 0, 0.6);
+    const m = this.track(main)!;
+    if (this.main !== main) { m.el.currentTime = 0; }
+    this.main = main;
+    this.layer = layer;
+    this.layerOn = false;
+    this.fade(m, MUSIC_VOL, 0.6);
+    if (layer) { const l = this.track(layer)!; l.el.currentTime = 0; this.fade(l, 0, 0.1); }
+  }
+
+  /** Crossfade between the calm main track and the chase layer. */
+  chase(on: boolean): void {
+    if (on === this.layerOn || !this.ctx || !this.musicOn || !this.main || !this.layer) return;
+    this.layerOn = on;
+    this.fade(this.track(this.main)!, on ? MUSIC_VOL * 0.25 : MUSIC_VOL, on ? 0.3 : 1.5);
+    this.fade(this.track(this.layer)!, on ? MUSIC_VOL : 0, on ? 0.3 : 1.5);
   }
 
   toggleMusic(): boolean {
     this.musicOn = !this.musicOn;
-    if (this.musicOn) void this.music?.play().catch(() => {});
-    else this.music?.pause();
+    localStorage.setItem('oops.music', this.musicOn ? 'on' : 'off');
+    if (!this.musicOn) { for (const tr of this.tracks.values()) this.fade(tr, 0, 0.3); this.main = null; }
+    else if (this.wanted) this.music(this.wanted.main, this.wanted.layer);
     return this.musicOn;
   }
 
@@ -74,6 +131,24 @@ export class Sound {
   }
 
   step(): void { this.tone('triangle', 200, 320, 0.04, 0.04); }
+
+  /** Footstep with a different feel per floor. */
+  footstep(surface: Surface, running: boolean): void {
+    const v = running ? 1 : 0.6;
+    switch (surface) {
+      case 'grass': this.noiseBurst(0.06, 0.05 * v, 900, 400); break;
+      case 'tile': this.tone('square', 900, 600, 0.025, 0.025 * v); break;
+      case 'stone': this.tone('triangle', 260, 140, 0.05, 0.06 * v); break;
+      case 'metal': this.tone('square', 520, 500, 0.05, 0.03 * v); this.tone('sine', 1400, 1300, 0.08, 0.015 * v); break;
+      case 'carpet': this.noiseBurst(0.04, 0.015 * v, 400, 300); break;
+    }
+  }
+
+  /** Heartbeat thump (louder/faster when an alien is close to spotting you). */
+  heartbeat(level: number): void {
+    this.tone('sine', 70, 45, 0.12, 0.12 + 0.12 * level);
+    this.tone('sine', 65, 42, 0.1, 0.08 + 0.1 * level, 0.16);
+  }
   bonk(): void { this.tone('sawtooth', 450, 80, 0.28, 0.24); this.tone('sine', 900, 700, 0.5, 0.06, 0.25); }
   honk(): void { this.tone('square', 440, 440, 0.22, 0.12); this.tone('square', 554, 554, 0.22, 0.12); }
   moonwalk(): void { this.tone('sine', 320, 640, 0.35, 0.18, 0, 'lin'); }

@@ -1,0 +1,11 @@
+Music by Juhani Junkala (https://juhanijunkala.com/), released under CC0 1.0 (public domain).
+  menu.mp3       - Chiptune Adventures: 4. Stage Select
+  suburbia.mp3   - Chiptune Adventures: 1. Stage 1
+  market.mp3     - Chiptune Adventures: 2. Stage 2
+  chase.mp3      - Chiptune Adventures: 3. Boss Fight
+  school.mp3     - Retro Game Music Pack: Level 1
+  story.mp3      - Retro Game Music Pack: Level 2
+  spaceport.mp3  - Retro Game Music Pack: Level 3
+  ending.mp3     - Retro Game Music Pack: Ending
+Sources: https://opengameart.org/content/4-chiptunes-adventure and https://opengameart.org/content/5-chiptunes-action
+Not required by CC0, but credited with thanks.

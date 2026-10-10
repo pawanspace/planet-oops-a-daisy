@@ -39,7 +39,7 @@ window.addEventListener('resize', () => game.scale.resize(innerWidth * DPR, inne
 game.scene.add('game', GameScene, false);
 game.scene.add('story', StoryScene, false);
 game.scene.add('title', TitleScene, false);
-if (import.meta.env.DEV) (window as unknown as { __game: Phaser.Game }).__game = game;
+if (import.meta.env.DEV) Object.assign(window, { __game: game, __sound: sound });
 
 type SceneKey = 'game' | 'story' | 'title';
 /** Run exactly one scene. */
@@ -82,6 +82,7 @@ const starText = (n: number) => '⭐'.repeat(n) + '☆'.repeat(3 - n);
 // ---------------------------------------------------------------------------
 function showHome(): void {
   document.body.classList.remove('playing');
+  sound.music('menu');
   run('title', { parts: shipParts() });
   const total = Object.values(loadStars()).reduce((a, b) => a + b, 0);
   const diffs = (Object.keys(DIFFICULTY) as Difficulty[])
@@ -99,6 +100,7 @@ function showHome(): void {
 
 function showLevels(): void {
   document.body.classList.remove('playing');
+  sound.music('menu');
   if (!game.scene.isActive('title')) run('title', { parts: shipParts() });
   const stars = loadStars();
   const zones = CAMPAIGN.map((z, zi) => {
@@ -138,7 +140,9 @@ function startLevel(idx: number): void {
   $('hint').classList.remove('faded');
   setTimeout(() => $('hint').classList.add('faded'), 9000);
   $('hud-level').textContent = entry.data.name;
-  const data: SceneData = { level: entry.data, difficulty, controls, onEnd, onFrame, theme: ZONE_THEMES[Math.max(0, entry.zone)] };
+  const theme = ZONE_THEMES[Math.max(0, entry.zone)];
+  sound.music(theme, 'chase');
+  const data: SceneData = { level: entry.data, difficulty, controls, onEnd, onFrame, theme };
   run('game', data);
 }
 
@@ -148,6 +152,7 @@ function playStory(id: StoryId, then: () => void): void {
   document.body.classList.add('story');
   const done = () => { document.body.classList.remove('story'); then(); };
   $('btn-skip').onclick = () => (game.scene.getScene('story') as StoryScene).finish();
+  sound.music(id === 'ending' ? 'ending' : 'story');
   run('story', { id, onDone: done });
 }
 
@@ -246,6 +251,7 @@ window.addEventListener('keydown', e => {
 $('btn-pause').addEventListener('click', pause);
 $('btn-music').addEventListener('click', () => { sound.unlock(); $('btn-music').textContent = sound.toggleMusic() ? '🎵' : '🔇'; });
 controls.onAnyInput = () => sound.unlock();
+$('btn-music').textContent = sound.musicOn ? '🎵' : '🔇';
 window.addEventListener('pointerdown', () => sound.unlock(), { once: true });
 
 if (location.search.includes('gallery')) {

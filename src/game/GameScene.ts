@@ -3,6 +3,7 @@ import Phaser from 'phaser';
 import { CONFIG, DT, TILE, type Difficulty } from '../sim/config';
 import type { LevelData } from '../sim/level';
 import { World, type GameEvent } from '../sim/world';
+import { T } from '../sim/level';
 import type { Controls } from './controls';
 import {
   drawCheckpoint, drawCone, drawDonut, drawDynamicTiles, drawGround, drawItem,
@@ -100,6 +101,8 @@ export class GameScene extends Phaser.Scene {
   private flights: { x0: number; y0: number; x1: number; y1: number; t: number }[] = [];
   private flyers: Flyer[] = [];
   private theme: ZoneTheme = 'suburbia';
+  private stepT = 0;
+  private beatT = 0;
 
   constructor() { super('game'); }
 
@@ -215,6 +218,18 @@ export class GameScene extends Phaser.Scene {
     }
     if (this.leoJump > 0) this.leoJump -= dt;
     const p = w.player;
+    // music + sound atmosphere
+    sound.chase(w.aliens.some(a => a.state === 'chase') || w.alarm);
+    const watch = Math.max(0, ...w.aliens.map(a => (a.state === 'suspicious' || a.kind === 'drone' ? a.sus : 0)));
+    this.beatT -= dt;
+    if (watch > 0.05 && this.beatT <= 0) { sound.heartbeat(watch); this.beatT = 0.85 - 0.45 * watch; }
+    this.stepT -= dt;
+    if (p.moving && p.moonwalkT <= 0 && !w.hug && this.stepT <= 0) {
+      const tile = w.grid.get(Math.floor(p.x / TILE), Math.floor(p.y / TILE));
+      const surface = tile === T.Carpet ? 'carpet' : ({ suburbia: 'grass', school: 'tile', market: 'stone', spaceport: 'metal' } as const)[this.theme];
+      sound.footstep(surface, p.running);
+      this.stepT = p.running ? 0.2 : 0.34;
+    }
     this.dustT -= dt;
     if (p.running && this.dustT <= 0) { this.fxs.burst('dust', p.x, p.y, 2, { speed: 30 }); this.dustT = 0.09; }
     w.aliens.forEach((a, i) => {
@@ -256,6 +271,11 @@ export class GameScene extends Phaser.Scene {
 
   private onEvent(e: GameEvent): void {
     const cam = this.cameras.main;
+    if ('alien' in e && ['spotted', 'suspicious', 'hug', 'lost', 'tired', 'eat', 'wake', 'investigate', 'fooled', 'stolen'].includes(e.type)) {
+      const kind = this.world.aliens[e.alien]?.kind;
+      const pitch = ({ kid: 1.5, heavy: 0.6, hugger: 1.1, scooter: 1.25, lookout: 0.9, stroller: 1, drone: 2 } as const)[kind ?? 'stroller'];
+      if (kind !== 'drone') sound.voice(pitch + (e.alien % 3) * 0.05);
+    }
     switch (e.type) {
       case 'noise': this.rings.push({ x: e.x, y: e.y, r: e.radius, age: 0 }); break;
       case 'spotted': this.punch = 0.08; this.hitstop = 0.08; if (!this.world.aliens.some((a, i) => i !== e.alien && a.state === 'chase')) this.slowmo = 0.35; sound.spotted(); this.say(e.x, e.y, this.line('spotted', e), '#ff4d6d', 22); break;
