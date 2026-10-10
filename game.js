@@ -322,7 +322,7 @@
       grid: [
         "WWWWWWWWWWWWWWWWWW",
         "W.......WW......GW",
-        "W.WWWW.WWW.WWWW.IW",
+        "W.WWWW.WWW.WWW.WIW",
         "W.W..W.....W....WW",
         "W.WW.W.WWW.W.WWW.W",
         "W....W...W...W...W",
@@ -334,12 +334,12 @@
         "WWWWWWWWWWWWWWWWWW"
       ],
       aliens: [
-        // Guard 1: patrols the bottom corridor — player MUST cross row 10 to reach the gate
-        { c: 6, r: 10, dir: 1, axis: 'x', min: 3, max: 9, spd: 65 },
-        // Guard 2: patrols row 7 cols 9-11 — player MUST pass through (11,7) to ascend col 11
+        // Guard 1: patrols row 10 cols 2 to 6 — directly guards Keycard at (1,10)
+        { c: 4, r: 10, dir: 1, axis: 'x', min: 2, max: 6, spd: 65 },
+        // Guard 2: patrols row 7 cols 9 to 11 — guards the mid-level crossing
         { c: 10, r: 7, dir: 1, axis: 'x', min: 9, max: 11, spd: 65 },
-        // Guard 3: patrols top-right corridor — player MUST pass row 1 to reach the gate
-        { c: 13, r: 1, dir: 1, axis: 'x', min: 12, max: 14, spd: 70 }
+        // Guard 3: patrols row 1 cols 11 to 14 — guards the approach to Gate at (16,1)
+        { c: 13, r: 1, dir: 1, axis: 'x', min: 11, max: 14, spd: 70 }
       ]
     },
 
@@ -847,39 +847,7 @@
       state.gate_open = plate_on; // Laser gate stays open while pressed
     }
 
-    // 4. OBJECTIVE PROXIMITY CHECK (Triggers Balanced Alert Mode!)
-    let near_objective = false;
-    const check_target_dist = (tx, ty) => {
-      const dist = Math.hypot(state.player_x - (tx * TILE + TILE / 2), state.player_y - (ty * TILE + TILE / 2));
-      return dist < 140; // ~3.5 tiles (tightened so entire map isn't triggered)
-    };
-
-    if (state.level_index === 0) {
-      if (!state.has_key && check_target_dist(1, 10)) near_objective = true;
-      if (check_target_dist(16, 2) || check_target_dist(16, 3)) near_objective = true;
-    } else if (state.level_index === 1) {
-      if (!state.lever_pulled && check_target_dist(1, 1)) near_objective = true;
-      if (check_target_dist(16, 4) || check_target_dist(16, 5)) near_objective = true;
-    } else if (state.level_index === 2) {
-      if (check_target_dist(9, 5) || check_target_dist(14, 9) || check_target_dist(16, 10)) near_objective = true;
-    } else if (state.level_index === 3) {
-      if (check_target_dist(1, 1) || check_target_dist(16, 1) || check_target_dist(1, 10) || check_target_dist(16, 10)) near_objective = true;
-    }
-
-    // Find the single closest alien within range so player never gets mobbed by multiple aliens
-    let closest_alien = null;
-    let min_alien_dist = 175; // must be within 175px (~4.3 tiles) to trigger
-    if (near_objective) {
-      state.aliens.forEach(a => {
-        const d = Math.hypot(a.x - state.player_x, a.y - state.player_y);
-        if (d < min_alien_dist) {
-          min_alien_dist = d;
-          closest_alien = a;
-        }
-      });
-    }
-
-    // 5. UPDATE ALIENS (Balanced, Fun, Fair Patrol & Alert System)
+    // 5. UPDATE ALIENS (Clean, Predictable, Arcade-Quality Movement)
     state.aliens.forEach(a => {
       a.phase += dt * 9;
 
@@ -887,12 +855,11 @@
         // Alien is frozen in place: cannot patrol or chase, but remains a solid obstacle!
         a.frozen_t -= dt;
       } else {
-        // Only the single closest alien near the objective enters alert
-        const dist_to_player = Math.hypot(a.x - state.player_x, a.y - state.player_y);
-        a.alert = (a === closest_alien) && (dist_to_player < 175);
-
-        // Fair speed: gentle 15% boost, never overpowering player (player moves at 160)
-        const cur_spd = a.alert ? (a.base_spd * 1.15) : a.base_spd;
+        // Active speed: base speed or boosted alarm speed when keycard / objective is active
+        const cur_spd = (state.has_key || state.lever_pulled || state.terminals_hacked > 0) 
+          ? (a.base_spd * 1.2) 
+          : a.base_spd;
+        a.alert = state.has_key || state.lever_pulled || (state.terminals_hacked > 0);
 
         // Lured by Donut
         if (state.donut_timer > 0) {
@@ -903,50 +870,11 @@
             a.vy = Math.sin(angle);
             const nextX = a.x + a.vx * cur_spd * 0.7 * dt;
             const nextY = a.y + a.vy * cur_spd * 0.7 * dt;
-            // Lured guards may only follow a donut through walkable space.
-            // Moving the axes independently preserves the game's wall sliding.
             if (can_stand(nextX, a.y)) a.x = nextX;
             if (can_stand(a.x, nextY)) a.y = nextY;
           }
-        } else if (a.alert) {
-          // ALERT HUNT MODE: Can move in all 4 directions toward the player!
-          const dx = state.player_x - a.x;
-          const dy = state.player_y - a.y;
-
-          let try_x = (dx > 0) ? 1 : -1;
-          let try_y = (dy > 0) ? 1 : -1;
-
-          if (Math.abs(dx) > Math.abs(dy)) {
-            const test_x = a.x + try_x * cur_spd * dt;
-            if (can_stand(test_x, a.y)) {
-              a.x = test_x;
-              a.vx = try_x;
-              a.vy = 0;
-            } else {
-              const test_y = a.y + try_y * cur_spd * dt;
-              if (can_stand(a.x, test_y)) {
-                a.y = test_y;
-                a.vx = 0;
-                a.vy = try_y;
-              }
-            }
-          } else {
-            const test_y = a.y + try_y * cur_spd * dt;
-            if (can_stand(a.x, test_y)) {
-              a.y = test_y;
-              a.vx = 0;
-              a.vy = try_y;
-            } else {
-              const test_x = a.x + try_x * cur_spd * dt;
-              if (can_stand(test_x, a.y)) {
-                a.x = test_x;
-                a.vx = try_x;
-                a.vy = 0;
-              }
-            }
-          }
         } else {
-          // NORMAL PATROL MODE along designated corridor axis
+          // NORMAL PATROL MODE along designated corridor axis (Clean & Predictable)
           if (a.axis === 'x') {
             a.vx = a.dir;
             a.vy = 0;
@@ -1232,18 +1160,12 @@
         ctx.textAlign = 'center';
         ctx.fillText(`${c},${r}`, x + 14, y + 10);
 
-        // Cell type label in center
-        let label = cell;
+        // Objective badge for special cells ONLY (keeps grid crystal clean)
+        let label = '';
         let labelColor = '#90caf9';
         if (tmpl && tmpl.start && tmpl.start.c === c && tmpl.start.r === r) {
           label = 'START';
           labelColor = '#76ff03';
-        } else if (cell === 'W') {
-          label = 'W';
-          labelColor = 'rgba(255, 255, 255, 0.28)';
-        } else if (cell === '.') {
-          label = '·';
-          labelColor = 'rgba(255, 255, 255, 0.25)';
         } else if (cell === 'K') {
           label = 'KEY';
           labelColor = '#ffd600';
@@ -1264,10 +1186,12 @@
           labelColor = '#2979ff';
         }
 
-        ctx.fillStyle = labelColor;
-        ctx.font = 'bold 9px -apple-system, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(label, x + TILE / 2, y + TILE - 4);
+        if (label) {
+          ctx.fillStyle = labelColor;
+          ctx.font = 'bold 9px -apple-system, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(label, x + TILE / 2, y + TILE - 4);
+        }
       }
     }
 
