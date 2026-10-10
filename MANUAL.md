@@ -102,6 +102,14 @@ Noise matters. **Running** makes footstep noise that aliens hear **through walls
 | 🔵 **Scooter Rider** | Zooms along a lane, can't see you, can't stop | Wait for a gap and cross |
 | 🤖 **Drone** | A robot: it looks FORWARDS, and moonwalking doesn't fool it. If it spots you it BEEPS and calls everyone | Hide behind things and time it |
 
+## Rewards 🎁
+
+* **👕 Wardrobe**: stars unlock new outfits for Leo (a backwards cap, a pineapple helmet, a crown...).
+* **🧦 Hidden socks**: every level has one sock hidden in a far-away corner. Can you find all 12?
+* **📒 Sticker book**: 17 stickers for funny things, like getting hugged 10 times or never running in School.
+* **📸 Share**: after a level, make a picture of your result to show your friends.
+* **🎬 Intro**: watch the opening story again from the title screen.
+
 ## Stars ⭐
 
 Each level gives you up to three stars:

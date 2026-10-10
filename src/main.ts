@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { CAMPAIGN } from './sim/campaign';
-import { DIFFICULTY, type Difficulty } from './sim/config';
+import { CONFIG, DIFFICULTY, type Difficulty } from './sim/config';
 import { starsFor, type World } from './sim/world';
 import { Controls } from './game/controls';
 import { GameScene, type SceneData } from './game/GameScene';
@@ -168,16 +168,18 @@ function onFrame(w: World): void {
   const got = w.items.filter(i => i.taken).length;
   const terms = w.terminals.length ? `  🖥️ ${w.terminals.filter(t => t.done).length}/${w.terminals.length}` : '';
   $('hud-items').textContent = `${partFor(levelIdx)} ${got}/${w.items.length}${p.keys ? '  🗝️' : ''}${terms}${w.alarm ? '  🚨' : ''}`;
-  setCooldown('btn-honk', p.cd.honk);
-  setCooldown('btn-moon', p.moonwalkT > 0 ? 0 : p.cd.moonwalk);
-  setCooldown('btn-donut', p.cd.donut);
+  const k = DIFFICULTY[difficulty].cooldown;
+  setCooldown('btn-honk', p.cd.honk, CONFIG.honk.cooldown * k);
+  setCooldown('btn-moon', p.moonwalkT > 0 ? 0 : p.cd.moonwalk, CONFIG.moonwalk.cooldown * k);
+  setCooldown('btn-donut', p.cd.donut, CONFIG.donut.cooldown * k);
   $('btn-moon').classList.toggle('active', p.moonwalkT > 0);
 }
 
-function setCooldown(id: string, cd: number): void {
+function setCooldown(id: string, cd: number, max: number): void {
   const el = $(id);
   el.classList.toggle('cooling', cd > 0);
   el.dataset.cd = cd > 0 ? String(Math.ceil(cd)) : '';
+  el.style.setProperty('--cd', String(Math.max(0, Math.min(1, cd / max))));
 }
 
 function onEnd(w: World, run: RunStats): void {
@@ -308,6 +310,12 @@ $('btn-music').addEventListener('click', () => { sound.unlock(); $('btn-music').
 controls.onAnyInput = () => sound.unlock();
 $('btn-music').textContent = sound.musicOn ? '🎵' : '🔇';
 window.addEventListener('pointerdown', () => sound.unlock(), { once: true });
+
+// Offline play once installed (production builds only).
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => { void navigator.serviceWorker.register('sw.js').catch(() => {}); });
+}
+setTimeout(() => $('splash').classList.add('gone'), 400);
 
 if (location.search.includes('gallery')) {
   game.scene.add('gallery', GalleryScene, true);

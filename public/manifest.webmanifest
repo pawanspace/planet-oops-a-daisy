@@ -1,0 +1,16 @@
+{
+  "name": "Planet Oops-a-Daisy",
+  "short_name": "Oops-a-Daisy",
+  "description": "A funny stealth maze game where everyone's legs face backwards.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#2a1f45",
+  "theme_color": "#2a1f45",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

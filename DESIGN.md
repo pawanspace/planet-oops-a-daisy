@@ -108,7 +108,16 @@ Each level introduces one idea, then the zone finale combines them.
 
 ---
 
-## 9. Technology
+## 9. Presentation
+
+* Side-view character rigs over a top-down map, so the backwards knees and toes are visible (`src/game/art/characters.ts`).
+* Juice: particles, skid marks, hit pause, camera punch, chase slow-mo, level-start reveal.
+* Four zone looks (floors, walls, obstacles, decorations, sky life) from the same tile codes (`art/themes.ts`).
+* Story: opening comic, zone cutscenes, ending + credits; living title screen with the ship being rebuilt.
+* Sound: CC0 music per zone with a chase layer crossfade, footsteps per surface, heartbeat, alien voices.
+* Rewards: outfits (stars), hidden socks, sticker book, share card. Installable, offline-capable web app.
+
+## 10. Technology
 
 * **TypeScript + Vite**, static build, playable in iPad Safari (Add to Home Screen).
 * **`src/sim/`**: pure TypeScript game rules, fixed 60 Hz step, no browser APIs. Same input → same result.
@@ -134,7 +143,7 @@ Each level introduces one idea, then the zone finale combines them.
 * Campaign maps are generated from `tools/gen-campaign.py` → `levels/drafts/*.mjs` → `tools/draft-level.mjs` → `levels/*.tmj`.
   Either edit the generator and regenerate, or edit the `.tmj` in Tiled directly (then stop regenerating that level).
 
-## 10. Tunable numbers (src/sim/config.ts)
+## 11. Tunable numbers (src/sim/config.ts)
 
 Per-alien-kind numbers (speed, sight, radius, deaf/honk-proof…) are in `KINDS`.
 
