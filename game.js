@@ -1097,34 +1097,64 @@
               }
             }
           } else {
-            // C. Normal Patrol Mode along designated corridor
+            // C. Corridor Movement (Sugar Rush Open Roam vs Normal Patrol)
             a.alert = global_alarm;
+
+            // Realign smoothly back to home corridor lane if displaced by donut
+            if (a.axis === 'x') {
+              const home_y = a.home_r * TILE + TILE / 2;
+              if (Math.abs(a.y - home_y) > 1.5) {
+                const step = Math.sign(home_y - a.y) * cur_spd * dt;
+                if (can_stand(a.x, a.y + step)) a.y += step;
+                else if (can_stand(a.x, home_y)) a.y = home_y;
+              }
+            } else {
+              const home_x = a.home_c * TILE + TILE / 2;
+              if (Math.abs(a.x - home_x) > 1.5) {
+                const step = Math.sign(home_x - a.x) * cur_spd * dt;
+                if (can_stand(a.x + step, a.y)) a.x = step;
+                else if (can_stand(home_x, a.y)) a.x = home_x;
+              }
+            }
+
             if (a.axis === 'x') {
               const cur_c = a.x / TILE;
-              // Return to patrol bounds if drifted
-              if (cur_c < a.min) a.dir = 1;
-              else if (cur_c > a.max) a.dir = -1;
-              else if (a.dir > 0 && cur_c >= a.max) a.dir = -1;
-              else if (a.dir < 0 && cur_c <= a.min) a.dir = 1;
+
+              // In Sugar Rush: roam the entire open hallway!
+              // In Normal Patrol: turn around at designated min / max
+              if (a.sugar_rush_t <= 0) {
+                if (a.dir > 0 && cur_c >= a.max) a.dir = -1;
+                else if (a.dir < 0 && cur_c <= a.min) a.dir = 1;
+              }
 
               a.vx = a.dir;
               a.vy = 0;
               const nextX = a.x + a.dir * cur_spd * dt;
-              if (can_stand(nextX, a.y)) a.x = nextX;
-              else a.dir = -a.dir;
+              if (can_stand(nextX, a.y)) {
+                a.x = nextX;
+              } else {
+                // Clean bounce off wall without getting stuck!
+                a.dir = -a.dir;
+                a.vx = a.dir;
+              }
             } else {
               const cur_r = a.y / TILE;
-              // Return to patrol bounds if drifted
-              if (cur_r < a.min) a.dir = 1;
-              else if (cur_r > a.max) a.dir = -1;
-              else if (a.dir > 0 && cur_r >= a.max) a.dir = -1;
-              else if (a.dir < 0 && cur_r <= a.min) a.dir = 1;
+
+              if (a.sugar_rush_t <= 0) {
+                if (a.dir > 0 && cur_r >= a.max) a.dir = -1;
+                else if (a.dir < 0 && cur_r <= a.min) a.dir = 1;
+              }
 
               a.vx = 0;
               a.vy = a.dir;
               const nextY = a.y + a.dir * cur_spd * dt;
-              if (can_stand(a.x, nextY)) a.y = nextY;
-              else a.dir = -a.dir;
+              if (can_stand(a.x, nextY)) {
+                a.y = nextY;
+              } else {
+                // Clean bounce off wall without getting stuck!
+                a.dir = -a.dir;
+                a.vy = a.dir;
+              }
             }
           }
         }
