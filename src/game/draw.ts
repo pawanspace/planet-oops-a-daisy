@@ -3,7 +3,8 @@ import Phaser from 'phaser';
 import { CONFIG, KINDS, TILE } from '../sim/config';
 import type { Grid } from '../sim/grid';
 import { CONVEYOR_DIR, T, isConveyor } from '../sim/level';
-import type { Alien, Lever, Player, Terminal, World } from '../sim/world';
+import type { Alien, Lever, Terminal, World } from '../sim/world';
+import { alienHeight } from './art/characters';
 
 type G = Phaser.GameObjects.Graphics;
 const V = (x: number, y: number) => new Phaser.Math.Vector2(x, y);
@@ -18,10 +19,6 @@ export const COLORS = {
   squeaky: 0xffe65a, squeakyDark: 0xe6be28,
   belt: 0x7a8296, beltDark: 0x5a6070, arrow: 0xfff07a,
   shield: 0x50a0ff,
-};
-
-const KIND_COLOR: Record<Alien['kind'], number> = {
-  stroller: 0x37c8b4, lookout: 0xff8c3c, hugger: 0xff6eb4, kid: 0xffd23c, heavy: 0x9b6bd6, scooter: 0x4ad6ff, drone: 0xb8c4d6,
 };
 
 /** Tiles that change every frame (belts, plates, lasers) are drawn by drawDynamicTiles instead. */
@@ -139,126 +136,6 @@ export function drawCone(g: G, w: World, a: Alien): void {
   g.lineStyle(2, color, 0.8).strokePoints(pts, true);
 }
 
-export function alienRadius(a: Alien): number {
-  return KINDS[a.kind].radius;
-}
-
-function drawDrone(g: G, a: Alien, t: number): void {
-  const R = alienRadius(a);
-  g.fillStyle(0x000000, 0.15).fillEllipse(a.x, a.y + 18, R * 1.6, R * 0.6);
-  const bob = Math.sin(t * 4 + a.id) * 2;
-  g.lineStyle(2, 0x445566);
-  for (const ang of [0.7, 2.4, 3.9, 5.5]) g.lineBetween(a.x, a.y + bob, a.x + Math.cos(ang) * R * 1.2, a.y + bob + Math.sin(ang) * R * 1.2);
-  for (const ang of [0.7, 2.4, 3.9, 5.5]) {
-    const spin = t * 30;
-    g.fillStyle(0xdde6f0, 0.6).fillEllipse(a.x + Math.cos(ang) * R * 1.2, a.y + bob + Math.sin(ang) * R * 1.2, 14 * Math.abs(Math.cos(spin)), 5);
-  }
-  g.fillStyle(KIND_COLOR.drone).fillCircle(a.x, a.y + bob, R * 0.8);
-  const lx = Math.cos(a.look), ly = Math.sin(a.look);
-  g.fillStyle(a.sus > 0.5 ? 0xff3355 : 0x2299ff).fillCircle(a.x + lx * 6, a.y + bob + ly * 6, 5);
-  g.fillStyle(0xffffff).fillCircle(a.x + lx * 7 - 1, a.y + bob + ly * 7 - 1, 1.6);
-}
-
-export function drawAlien(g: G, a: Alien, t: number): void {
-  if (a.kind === 'drone') { drawDrone(g, a, t); return; }
-  const color = KIND_COLOR[a.kind];
-  const R = alienRadius(a);
-  const big = R / 16;
-  const moving = a.speed > 1 && !['stunned', 'eating', 'sleep', 'hugging'].includes(a.state);
-  const step = moving ? Math.sin(t * (a.state === 'chase' ? 22 : a.kind === 'kid' ? 18 : 12) + a.id) : 0;
-  const hx = a.heading.x, hy = a.heading.y;
-  const fx = hx || Math.cos(a.look + Math.PI), fy = hy || Math.sin(a.look + Math.PI); // toes point where the FEET go
-  const px = -fy, py = fx;
-
-  g.fillStyle(0x000000, 0.18).fillEllipse(a.x, a.y + R * 0.75, R * 2, R * 0.9);
-
-  if (a.kind === 'scooter') {
-    // a backwards kick-scooter under the rider
-    g.fillStyle(0x333333).fillRoundedRect(a.x - fx * 18 - Math.abs(px) * 6, a.y - fy * 18 - Math.abs(py) * 6, Math.abs(fx) * 36 + Math.abs(px) * 12, Math.abs(fy) * 36 + Math.abs(py) * 12, 5);
-    g.fillStyle(0x111111).fillCircle(a.x + fx * 17, a.y + fy * 17, 5).fillCircle(a.x - fx * 17, a.y - fy * 17, 5);
-    g.lineStyle(3, 0xff4d6d).lineBetween(a.x - fx * 15, a.y - fy * 15, a.x - fx * 15, a.y - fy * 15 - 22);
-  } else {
-    for (const side of [-1, 1]) {
-      const s = side * step * 6;
-      const bx = a.x + px * side * R * 0.5 + fx * s, by = a.y + py * side * R * 0.5 + fy * s;
-      g.fillStyle(0x2b2b2b).fillEllipse(bx + fx * R * 0.55, by + fy * R * 0.55, 11 * big, 11 * big);
-    }
-  }
-
-  const squash = a.untangle > 0 ? 1 + 0.15 * Math.sin(t * 40) : a.state === 'eating' ? 1 + 0.08 * Math.sin(t * 18) : a.state === 'hugging' ? 1.15 : 1;
-  g.fillStyle(color).fillEllipse(a.x, a.y, R * 2 * squash, (R * 2) / squash);
-  g.fillStyle(0xffffff, 0.25).fillEllipse(a.x - R * 0.3, a.y - R * 0.35, R * 0.8, R * 0.5);
-  if (a.kind === 'heavy') {
-    // headphones: heavies can't hear a thing
-    g.lineStyle(4, 0x333333).beginPath().arc(a.x, a.y - 2, R * 0.85, Math.PI * 1.1, Math.PI * 1.9).strokePath();
-    g.fillStyle(0x333333).fillCircle(a.x - R * 0.8, a.y - 2, 5).fillCircle(a.x + R * 0.8, a.y - 2, 5);
-  }
-  if (a.kind === 'kid') g.fillStyle(0xff4d6d).fillTriangle(a.x - 8, a.y - R + 2, a.x + 8, a.y - R + 2, a.x, a.y - R - 10); // party hat
-
-  if (a.kind !== 'kid') {
-    const wob = Math.sin(t * 6 + a.id) * 3;
-    g.lineStyle(2, 0x333333).lineBetween(a.x, a.y - R * 0.8, a.x + wob, a.y - R * 1.45);
-    g.fillStyle(0xffe14a).fillCircle(a.x + wob, a.y - R * 1.5, 4);
-  }
-
-  const lx = Math.cos(a.look), ly = Math.sin(a.look);
-  const ex = a.x + lx * R * 0.45, ey = a.y + ly * R * 0.45;
-  const qx = -ly, qy = lx;
-  if (a.state === 'sleep') {
-    g.lineStyle(2, 0x222222);
-    for (const side of [-1, 1]) g.lineBetween(ex + qx * side * 7 - 3, ey + qy * side * 7, ex + qx * side * 7 + 3, ey + qy * side * 7);
-  } else if (a.state === 'hugging') {
-    g.lineStyle(2, 0x222222);
-    for (const side of [-1, 1]) {
-      const cx = ex + qx * side * 6.5, cy = ey + qy * side * 6.5;
-      g.beginPath().arc(cx, cy + 1, 4, Math.PI * 1.1, Math.PI * 1.9).strokePath(); // happy ^^ eyes
-    }
-  } else {
-    for (const side of [-1, 1]) {
-      const cx = ex + qx * side * 6.5, cy = ey + qy * side * 6.5;
-      g.fillStyle(0xffffff).fillCircle(cx, cy, 6 * Math.min(big, 1.2));
-      const dizzy = a.state === 'stunned' ? t * 12 + side : 0;
-      const pxo = a.state === 'stunned' ? Math.cos(dizzy) * 2.5 : lx * 2.5;
-      const pyo = a.state === 'stunned' ? Math.sin(dizzy) * 2.5 : ly * 2.5;
-      g.fillStyle(0x111111).fillCircle(cx + pxo, cy + pyo, 3 * Math.min(big, 1.2));
-    }
-  }
-}
-
-export function drawPlayer(g: G, p: Player, t: number, hugged: boolean): void {
-  const R = CONFIG.player.radius;
-  if (p.invuln > 0 && Math.floor(t * 12) % 2 === 0) return;
-  const f = [[0, -1], [1, 0], [0, 1], [-1, 0]][p.facing];
-  const moon = p.moonwalkT > 0;
-  const step = p.moving ? Math.sin(t * (p.running ? 22 : 14)) : 0;
-  const px = -f[1], py = f[0];
-  const toe = moon ? -1 : 1; // moonwalk: shoes on backwards, like a local!
-  const wriggle = hugged ? Math.sin(t * 40) * 3 : 0;
-  const x = p.x + wriggle, y = p.y;
-
-  g.fillStyle(0x000000, 0.18).fillEllipse(x, y + R * 0.8, R * 2, R * 0.8);
-  for (const side of [-1, 1]) {
-    const s = side * step * 5;
-    const bx = x + px * side * R * 0.45 + f[0] * s, by = y + py * side * R * 0.45 + f[1] * s;
-    g.fillStyle(moon ? 0xb04ae0 : 0xffffff).fillEllipse(bx + f[0] * toe * R * 0.6, by + f[1] * toe * R * 0.6, 10, 10);
-  }
-  g.fillStyle(0xff7a2f).fillCircle(x, y, R);
-  g.fillStyle(0xffe14a).fillCircle(x - 5, y + 4, 3).fillCircle(x + 6, y - 2, 2.5).fillCircle(x + 2, y + 8, 2);
-  const hx = x + f[0] * 4, hy = y + f[1] * 4;
-  g.fillStyle(0xbfe9ff, 0.85).fillCircle(hx, hy, R * 0.72);
-  g.fillStyle(hugged ? 0xffa0a0 : 0xffd2a8).fillCircle(hx + f[0] * 2, hy + f[1] * 2, R * 0.45);
-  g.fillStyle(0x222222).fillCircle(hx + f[0] * 5 + px * 3, hy + f[1] * 5 + py * 3, 1.6).fillCircle(hx + f[0] * 5 - px * 3, hy + f[1] * 5 - py * 3, 1.6);
-  g.lineStyle(2, 0xffffff, 0.8).strokeCircle(hx, hy, R * 0.72);
-}
-
-export function drawHearts(g: G, x: number, y: number, t: number): void {
-  for (let i = 0; i < 5; i++) {
-    const a = t * 3 + (i * Math.PI * 2) / 5, r = 26 + Math.sin(t * 6 + i) * 4;
-    const hx = x + Math.cos(a) * r, hy = y - 10 + Math.sin(a) * r * 0.6;
-    g.fillStyle(0xff4d8d).fillCircle(hx - 3, hy, 4).fillCircle(hx + 3, hy, 4).fillTriangle(hx - 7, hy + 1, hx + 7, hy + 1, hx, hy + 9);
-  }
-}
-
 export function drawKey(g: G, x: number, y: number, t: number): void {
   const b = Math.sin(t * 4) * 3;
   g.fillStyle(0x000000, 0.15).fillEllipse(x, y + 12, 20, 6);
@@ -319,8 +196,7 @@ export function drawDonut(g: G, x: number, y: number, t: number): void {
 }
 
 export function drawStatus(g: G, a: Alien, t: number): void {
-  const R = alienRadius(a);
-  const y = a.y - R - 22;
+  const y = a.y - (a.kind === 'drone' ? 52 : alienHeight(a) + 10);
   if (a.state === 'suspicious' || (a.kind === 'drone' && a.sus > 0)) {
     g.fillStyle(0x000000, 0.35).fillRoundedRect(a.x - 16, y - 4, 32, 8, 4);
     g.fillStyle(a.kind === 'drone' ? 0xff3355 : 0xffd23c).fillRoundedRect(a.x - 15, y - 3, 30 * Math.min(1, a.sus), 6, 3);

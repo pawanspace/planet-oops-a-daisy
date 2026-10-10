@@ -39,6 +39,7 @@ export interface AlienSpec {
   facing?: number;       // radians, for lookouts / sleepers
   turnEvery?: number;    // seconds, for lookouts
   pause?: number;        // seconds to wait at each waypoint
+  name?: string;         // named aliens get catchphrases
 }
 
 export interface LevelData {
@@ -148,6 +149,7 @@ export function loadTiled(map: TiledMap, fallbackName = 'Untitled'): LevelData {
             facing: facing !== undefined ? (facing * Math.PI) / 180 : undefined,
             turnEvery: num(p.turnEvery),
             pause: num(p.pause),
+            name: o.name || undefined,
           });
           break;
         }

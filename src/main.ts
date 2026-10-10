@@ -4,6 +4,7 @@ import { DIFFICULTY, type Difficulty } from './sim/config';
 import { starsFor, type World } from './sim/world';
 import { Controls } from './game/controls';
 import { GameScene, type SceneData } from './game/GameScene';
+import { GalleryScene } from './game/GalleryScene';
 import { LEVELS, loadStars, saveStars } from './game/levels';
 import { sound } from './game/sound';
 import './style.css';
@@ -21,14 +22,17 @@ if (matchMedia('(pointer: coarse)').matches) document.body.classList.add('touch'
 let difficulty: Difficulty = (localStorage.getItem('oops.difficulty') as Difficulty) || 'normal';
 let levelIdx = 0;
 
+// Render at the screen's real pixel density (sharp on iPad/Retina), displayed at CSS size.
+const DPR = Math.min(window.devicePixelRatio || 1, 2);
 const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
   backgroundColor: '#2a1f45',
-  scale: { mode: Phaser.Scale.RESIZE, width: '100%', height: '100%' },
+  scale: { mode: Phaser.Scale.NONE, width: innerWidth * DPR, height: innerHeight * DPR, zoom: 1 / DPR },
   render: { antialias: true },
   scene: [],
 });
+window.addEventListener('resize', () => game.scale.resize(innerWidth * DPR, innerHeight * DPR));
 game.scene.add('game', GameScene, false);
 
 const partFor = (idx: number) => {
@@ -142,7 +146,13 @@ $('panel').addEventListener('click', e => {
   if (b.dataset.diff) {
     difficulty = b.dataset.diff as Difficulty;
     localStorage.setItem('oops.difficulty', difficulty);
-    showTitle();
+    if (location.search.includes('gallery')) {
+  game.scene.add('gallery', GalleryScene, true);
+  hideOverlay();
+  $('hud').style.display = 'none';
+} else {
+  showTitle();
+}
   } else if (b.dataset.level) startLevel(Number(b.dataset.level));
   else if (b.dataset.act === 'retry') startLevel(levelIdx);
   else if (b.dataset.act === 'next') startLevel(levelIdx + 1);
@@ -162,4 +172,10 @@ $('btn-pause').addEventListener('click', pause);
 $('btn-music').addEventListener('click', () => { sound.unlock(); $('btn-music').textContent = sound.toggleMusic() ? '🎵' : '🔇'; });
 controls.onAnyInput = () => sound.unlock();
 
-showTitle();
+if (location.search.includes('gallery')) {
+  game.scene.add('gallery', GalleryScene, true);
+  hideOverlay();
+  $('hud').style.display = 'none';
+} else {
+  showTitle();
+}
