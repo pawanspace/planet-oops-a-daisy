@@ -1271,12 +1271,13 @@
       }
     }
 
-    // 3. Alien Patrol Paths Visualization
+    // 3. Alien Patrol Paths & Prominent Live Numbered Badges
     state.aliens.forEach((a, i) => {
       ctx.save();
       const pal = ALIEN_PALETTES[a.palette_id % ALIEN_PALETTES.length];
       const strokeColor = pal.blush || '#ff4081';
 
+      // 3A. Draw Patrol Route Track Line
       if (a.axis === 'x') {
         const startX = a.min * TILE;
         const endX = (a.max + 1) * TILE;
@@ -1295,11 +1296,11 @@
         ctx.fillRect(endX - 3, lineY - 6, 3, 12);
 
         ctx.fillStyle = 'rgba(0,0,0,0.85)';
-        ctx.fillRect((startX + endX) / 2 - 38, lineY - 17, 76, 13);
+        ctx.fillRect((startX + endX) / 2 - 42, lineY - 17, 84, 13);
         ctx.fillStyle = strokeColor;
         ctx.font = 'bold 9px monospace';
         ctx.textAlign = 'center';
-        ctx.fillText(`👽 G${i+1} [c${a.min}↔c${a.max}]`, (startX + endX) / 2, lineY - 7);
+        ctx.fillText(`👽 ALIEN #${i+1} [c${a.min}↔c${a.max}]`, (startX + endX) / 2, lineY - 7);
       } else {
         const startY = a.min * TILE;
         const endY = (a.max + 1) * TILE;
@@ -1318,12 +1319,33 @@
         ctx.fillRect(lineX - 6, endY - 3, 12, 3);
 
         ctx.fillStyle = 'rgba(0,0,0,0.85)';
-        ctx.fillRect(lineX - 38, (startY + endY) / 2 - 7, 76, 13);
+        ctx.fillRect(lineX - 42, (startY + endY) / 2 - 7, 84, 13);
         ctx.fillStyle = strokeColor;
         ctx.font = 'bold 9px monospace';
         ctx.textAlign = 'center';
-        ctx.fillText(`👽 G${i+1} [r${a.min}↔r${a.max}]`, lineX, (startY + endY) / 2 + 3);
+        ctx.fillText(`👽 ALIEN #${i+1} [r${a.min}↔r${a.max}]`, lineX, (startY + endY) / 2 + 3);
       }
+
+      // 3B. Floating Numbered Badge directly above the LIVE alien sprite
+      const curCol = Math.floor(a.x / TILE);
+      const curRow = Math.floor(a.y / TILE);
+      const badgeW = 60;
+      const badgeH = 16;
+      const badgeX = a.x - badgeW / 2;
+      const badgeY = a.y - 32;
+
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(10, 8, 24, 0.92)';
+      ctx.fillRect(badgeX, badgeY, badgeW, badgeH);
+      ctx.strokeStyle = '#ffd600';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(badgeX, badgeY, badgeW, badgeH);
+
+      ctx.fillStyle = '#ffd600';
+      ctx.font = 'bold 10px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`👽 #${i+1} (${curCol},${curRow})`, a.x, badgeY + 12);
+
       ctx.restore();
     });
 
@@ -1347,15 +1369,21 @@
       else if (hcell === 'P') typeDesc = `Pressure Plate 'P'`;
       else if (hcell === 'C') typeDesc = `Conveyor 'C'`;
 
+      const alienOnTile = state.aliens.find(a => Math.floor(a.x / TILE) === hover_c && Math.floor(a.y / TILE) === hover_r);
+      if (alienOnTile) {
+        const aIdx = state.aliens.indexOf(alienOnTile) + 1;
+        typeDesc += ` + 👽 ALIEN #${aIdx} (Patrol: ${alienOnTile.axis.toUpperCase()}[${alienOnTile.min}..${alienOnTile.max}])`;
+      }
+
       // Top Pinned Inspector Banner
       ctx.fillStyle = 'rgba(10, 8, 24, 0.95)';
-      ctx.fillRect(WORLD_W / 2 - 190, 8, 380, 24);
+      ctx.fillRect(WORLD_W / 2 - 210, 8, 420, 24);
       ctx.strokeStyle = '#ffd600';
       ctx.lineWidth = 1.5;
-      ctx.strokeRect(WORLD_W / 2 - 190, 8, 380, 24);
+      ctx.strokeRect(WORLD_W / 2 - 210, 8, 420, 24);
 
       ctx.fillStyle = '#ffd600';
-      ctx.font = 'bold 12px monospace';
+      ctx.font = 'bold 11px monospace';
       ctx.textAlign = 'center';
       ctx.fillText(`📐 CELL [Col: ${hover_c}, Row: ${hover_r}]  ➜  ${typeDesc}`, WORLD_W / 2, 24);
     } else {
