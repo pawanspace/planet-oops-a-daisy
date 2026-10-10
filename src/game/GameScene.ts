@@ -5,12 +5,13 @@ import type { LevelData } from '../sim/level';
 import { World, type GameEvent } from '../sim/world';
 import type { Controls } from './controls';
 import {
-  COLORS, drawCheckpoint, drawCone, drawDonut, drawDynamicTiles, drawGround, drawItem,
+  drawCheckpoint, drawCone, drawDonut, drawDynamicTiles, drawGround, drawItem,
   drawKey, drawLever, drawStatus, drawTerminal, dynamicTiles,
 } from './draw';
 import { DEFAULT_OUTFIT, alienHeight, drawAlien, drawHearts, drawLeo, updateFace, type Mood, type Outfit } from './art/characters';
 import { sound } from './sound';
 import { Fx } from './fx';
+import { drawFlyer, themeBg, type Flyer, type ZoneTheme } from './art/themes';
 
 export interface SceneData {
   level: LevelData;
@@ -19,6 +20,7 @@ export interface SceneData {
   onEnd: (w: World) => void;
   onFrame: (w: World) => void;
   outfit?: Outfit;
+  theme?: ZoneTheme;
 }
 
 const LINES = {
@@ -96,6 +98,8 @@ export class GameScene extends Phaser.Scene {
   private wasSkidding: boolean[] = [];
   private skidFrom: { x: number; y: number }[] = [];
   private flights: { x0: number; y0: number; x1: number; y1: number; t: number }[] = [];
+  private flyers: Flyer[] = [];
+  private theme: ZoneTheme = 'suburbia';
 
   constructor() { super('game'); }
 
@@ -116,13 +120,16 @@ export class GameScene extends Phaser.Scene {
     this.wasSkidding = this.world.aliens.map(() => false);
     this.skidFrom = this.world.aliens.map(a => ({ x: a.x, y: a.y }));
     this.flights = [];
+    this.theme = data.theme ?? 'suburbia';
+    const mw = this.world.grid.w * TILE, mh = this.world.grid.h * TILE;
+    this.flyers = [0, 1, 2].map(i => ({ x: (mw * (i * 0.37 + 0.1)) % mw, y: mh * (0.2 + i * 0.3), vx: (i % 2 ? -1 : 1) * (30 + i * 12), phase: i * 2.1 }));
   }
 
   create(): void {
     const w = this.world;
-    this.cameras.main.setBackgroundColor(COLORS.bg);
+    this.cameras.main.setBackgroundColor(themeBg(this.theme));
     this.ground = this.add.graphics();
-    drawGround(this.ground, w.grid);
+    drawGround(this.ground, w.grid, this.theme);
     this.dynList = dynamicTiles(w.grid);
     this.dyn = this.add.graphics();
     this.decalG = this.add.graphics();
@@ -215,6 +222,12 @@ export class GameScene extends Phaser.Scene {
       if (this.wasSkidding[i] && !a.skidding) this.fxs.skidMark(this.skidFrom[i].x, this.skidFrom[i].y, a.x, a.y);
       this.wasSkidding[i] = a.skidding;
     });
+    const mw = w.grid.w * TILE;
+    for (const fl of this.flyers) {
+      fl.x += fl.vx * dt;
+      if (fl.x > mw + 60) fl.x = -60;
+      if (fl.x < -60) fl.x = mw + 60;
+    }
     for (const f of this.flights) f.t += dt / 0.35;
     this.flights = this.flights.filter(f => f.t < 1);
     this.fxs.update(dt);
@@ -265,13 +278,13 @@ export class GameScene extends Phaser.Scene {
       case 'donut': this.flights.push({ x0: this.world.player.x, y0: this.world.player.y, x1: e.x, y1: e.y, t: 0 }); sound.donut(); break;
       case 'noDonutRoom': this.say(e.x, e.y, 'No room to throw!', '#ffffff', 14); break;
       case 'key': this.hitstop = 0.1; this.leoJump = 0.4; this.fxs.burst('spark', e.x, e.y, 14, { color: 0xffd23c, speed: 120 }); sound.pickup(); this.say(e.x, e.y, 'KEY!', '#ffd23c', 24); break;
-      case 'gate': this.fxs.burst('spark', e.x, e.y, 16, { color: 0xffa028, speed: 140 }); sound.gate(); drawGround(this.ground, this.world.grid); this.say(e.x, e.y, 'GATE OPEN!', '#ffa028', 22); break;
+      case 'gate': this.fxs.burst('spark', e.x, e.y, 16, { color: 0xffa028, speed: 140 }); sound.gate(); drawGround(this.ground, this.world.grid, this.theme); this.say(e.x, e.y, 'GATE OPEN!', '#ffa028', 22); break;
       case 'item': this.hitstop = 0.12; this.leoJump = 0.5; this.punch = 0.08; this.fxs.burst('spark', e.x, e.y, 24, { color: 0xfff27a, speed: 160 }); sound.pickup(); this.say(e.x, e.y, 'SHIP PART!', '#fff27a', 26); break;
       case 'checkpoint': this.fxs.burst('spark', e.x, e.y - 10, 10, { color: 0x4ae07a, speed: 90 }); sound.checkpoint(); this.say(e.x, e.y, 'Checkpoint!', '#4ae07a', 16); break;
       case 'squeak': sound.squeak(); this.say(e.x, e.y, 'SQUEAK!', '#ffe65a', 14); break;
       case 'lever': sound.gate(); this.say(e.x, e.y, 'BELTS FLIPPED!', '#fff07a', 18); break;
       case 'hack': this.fxs.burst('spark', e.x, e.y - 10, 14, { color: 0x4ad6ff, speed: 110 }); sound.pickup(); this.say(e.x, e.y, 'HACKED!', '#4ad6ff', 22); break;
-      case 'shieldDown': sound.win(); drawGround(this.ground, this.world.grid); this.say(e.x, e.y - 30, 'SHIELD DOWN!', '#4ad6ff', 26); break;
+      case 'shieldDown': sound.win(); drawGround(this.ground, this.world.grid, this.theme); this.say(e.x, e.y - 30, 'SHIELD DOWN!', '#4ad6ff', 26); break;
       case 'laserOpen': sound.gate(); break;
       case 'laserClose': sound.suspicious(); break;
       case 'tooLight': this.say(e.x, e.y, 'Too light! Need someone BIG.', '#ffffff', 14); break;
@@ -350,6 +363,13 @@ export class GameScene extends Phaser.Scene {
     this.fxs.drawDecals(this.decalG);
     const f = this.fx;
     f.clear();
+    // drifting cloud shadows, then sky life above everything
+    const mw = w.grid.w * TILE, mh = w.grid.h * TILE;
+    for (let i = 0; i < 3; i++) {
+      const cx = ((t * 12 + i * mw * 0.4) % (mw + 400)) - 200, cy = mh * (0.25 + i * 0.28);
+      f.fillStyle(0x000000, 0.05).fillEllipse(cx, cy, 260, 120).fillEllipse(cx + 90, cy + 20, 180, 90);
+    }
+    for (const fl of this.flyers) drawFlyer(f, this.theme, { ...fl, y: fl.y + Math.sin(t + fl.phase) * 8 }, t);
     this.fxs.draw(f);
     this.rings = this.rings.filter(r => (r.age += this.frameDt) < 0.5);
     for (const r of this.rings) {

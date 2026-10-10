@@ -94,3 +94,6 @@ body:not(.playing) #touch, body:not(.playing) #hint { visibility: hidden; }
   color: #fff; border-radius: 14px; padding: 8px 16px; font-size: 18px; font-weight: bold; }
 body.story #btn-skip { display: block; }
 body.story #hud, body:not(.playing) #hud-hearts, body:not(.playing) #hud-items, body:not(.playing) #hud-time, body:not(.playing) #hud-level { visibility: hidden; }
+
+#vignette { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 55%, rgba(10, 5, 25, 0.45) 100%); }
+body:not(.playing) #vignette { display: none; }

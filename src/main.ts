@@ -9,6 +9,7 @@ import { StoryScene, type StoryId } from './game/StoryScene';
 import { TitleScene } from './game/TitleScene';
 import { LEVELS, loadStars, saveStars } from './game/levels';
 import { sound } from './game/sound';
+import { ZONE_THEMES } from './game/art/themes';
 import './style.css';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -137,7 +138,7 @@ function startLevel(idx: number): void {
   $('hint').classList.remove('faded');
   setTimeout(() => $('hint').classList.add('faded'), 9000);
   $('hud-level').textContent = entry.data.name;
-  const data: SceneData = { level: entry.data, difficulty, controls, onEnd, onFrame };
+  const data: SceneData = { level: entry.data, difficulty, controls, onEnd, onFrame, theme: ZONE_THEMES[Math.max(0, entry.zone)] };
   run('game', data);
 }
 

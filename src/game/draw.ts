@@ -5,6 +5,7 @@ import type { Grid } from '../sim/grid';
 import { CONVEYOR_DIR, T, isConveyor } from '../sim/level';
 import type { Alien, Lever, Terminal, World } from '../sim/world';
 import { alienHeight } from './art/characters';
+import { drawThemedGround, type ZoneTheme } from './art/themes';
 
 type G = Phaser.GameObjects.Graphics;
 const V = (x: number, y: number) => new Phaser.Math.Vector2(x, y);
@@ -21,27 +22,13 @@ export const COLORS = {
   shield: 0x50a0ff,
 };
 
-/** Tiles that change every frame (belts, plates, lasers) are drawn by drawDynamicTiles instead. */
-export function drawGround(g: G, grid: Grid): void {
-  g.clear();
+/** Static ground: zone-themed floors/walls/obstacles, then gates, carpets, squeaky floors and shields on top.
+ *  Tiles that change every frame (belts, plates, lasers) are drawn by drawDynamicTiles instead. */
+export function drawGround(g: G, grid: Grid, theme: ZoneTheme = 'suburbia'): void {
+  drawThemedGround(g, grid, theme);
   for (let r = 0; r < grid.h; r++) for (let c = 0; c < grid.w; c++) {
     const t = grid.get(c, r), x = c * TILE, y = r * TILE;
-    if (t !== T.Wall && t !== T.Empty) {
-      g.fillStyle(COLORS.floor).fillRect(x, y, TILE, TILE);
-      if ((c * 7 + r * 3) % 5 === 0) g.fillStyle(COLORS.floorDot).fillCircle(x + 14 + ((c * 13) % 20), y + 12 + ((r * 11) % 22), 3);
-    }
     switch (t) {
-      case T.Wall:
-      case T.Empty:
-        g.fillStyle(COLORS.wallEdge).fillRect(x, y, TILE, TILE);
-        g.fillStyle(COLORS.wall).fillRect(x, y, TILE, TILE - 8);
-        g.fillStyle(COLORS.wallTop).fillRect(x + 3, y + 3, TILE - 6, TILE - 16);
-        break;
-      case T.Hedge:
-        g.fillStyle(COLORS.hedgeDark).fillCircle(x + 24, y + 28, 22);
-        g.fillStyle(COLORS.hedge).fillCircle(x + 16, y + 20, 14).fillCircle(x + 32, y + 20, 14).fillCircle(x + 24, y + 30, 15);
-        g.fillStyle(COLORS.hedgeLight).fillCircle(x + 15, y + 15, 5).fillCircle(x + 30, y + 17, 4);
-        break;
       case T.Gate:
         g.fillStyle(COLORS.gateBar).fillRect(x, y + 6, TILE, 6).fillRect(x, y + TILE - 12, TILE, 6);
         g.fillStyle(COLORS.gate);
