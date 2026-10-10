@@ -10,6 +10,10 @@ import { TitleScene } from './game/TitleScene';
 import { LEVELS, loadStars, saveStars } from './game/levels';
 import { sound } from './game/sound';
 import { ZONE_THEMES } from './game/art/themes';
+import {
+  OUTFITS, STICKERS, currentOutfit, recordRun, socksFound, stickersEarned, totalStars, wearOutfit, type RunStats,
+} from './game/progress';
+import { shareCard } from './game/share';
 import './style.css';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -83,7 +87,7 @@ const starText = (n: number) => '⭐'.repeat(n) + '☆'.repeat(3 - n);
 function showHome(): void {
   document.body.classList.remove('playing');
   sound.music('menu');
-  run('title', { parts: shipParts() });
+  run('title', { parts: shipParts(), outfit: currentOutfit().outfit });
   const total = Object.values(loadStars()).reduce((a, b) => a + b, 0);
   const diffs = (Object.keys(DIFFICULTY) as Difficulty[])
     .map(d => `<button data-diff="${d}" class="${d === difficulty ? 'selected' : ''}">${DIFFICULTY[d].label}</button>`).join('');
@@ -94,18 +98,19 @@ function showHome(): void {
     <p class="sub">Everyone's legs face backwards. <b>Their eyes look where they've been</b>, not where they're going.</p>
     <div class="row"><button data-act="levels" class="primary big">▶ PLAY</button></div>
     <div class="row diffs">${diffs}</div>
-    <div class="row"><button data-act="intro" class="small">🎬 Watch intro</button>
-      <span class="total">⭐ ${total} / ${CAMPAIGN.length * 9} · Ship parts ${shipParts().filter(Boolean).length}/4</span></div>`);
+    <div class="row"><button data-act="wardrobe" class="small">👕 Wardrobe</button><button data-act="stickers" class="small">📒 Stickers ${stickersEarned().size}/${STICKERS.length}</button><button data-act="intro" class="small">🎬 Intro</button></div>
+    <p class="total">⭐ ${total} / ${CAMPAIGN.length * 9} · 🚀 Ship parts ${shipParts().filter(Boolean).length}/4 · 🧦 ${socksFound().size}/12</p>`);
 }
 
 function showLevels(): void {
   document.body.classList.remove('playing');
   sound.music('menu');
-  if (!game.scene.isActive('title')) run('title', { parts: shipParts() });
+  if (!game.scene.isActive('title')) run('title', { parts: shipParts(), outfit: currentOutfit().outfit });
   const stars = loadStars();
+  const socks = socksFound();
   const zones = CAMPAIGN.map((z, zi) => {
     const levels = LEVELS.map((l, i) => ({ l, i })).filter(({ l }) => l.zone === zi).map(({ l, i }) =>
-      `<button class="level" data-level="${i}"><b>${l.id}</b><span>${l.data.name.replace(/^\d-\d\s*/, '')}</span><i>${starText(stars[l.id] ?? 0)}</i></button>`,
+      `<button class="level" data-level="${i}"><b>${l.id}</b><span>${l.data.name.replace(/^\d-\d\s*/, '')}</span><i>${starText(stars[l.id] ?? 0)}${socks.has(l.id) ? ' 🧦' : ''}</i></button>`,
     ).join('');
     return `<div class="zone ${zoneDone(zi) ? 'done' : ''}"><h2>${z.part} ${z.name} ${zoneDone(zi) ? '✅' : ''}</h2><div class="zone-levels">${levels}</div></div>`;
   }).join('');
@@ -142,7 +147,7 @@ function startLevel(idx: number): void {
   $('hud-level').textContent = entry.data.name;
   const theme = ZONE_THEMES[Math.max(0, entry.zone)];
   sound.music(theme, 'chase');
-  const data: SceneData = { level: entry.data, difficulty, controls, onEnd, onFrame, theme };
+  const data: SceneData = { level: entry.data, difficulty, controls, onEnd, onFrame, theme, outfit: currentOutfit().outfit };
   run('game', data);
 }
 
@@ -153,7 +158,7 @@ function playStory(id: StoryId, then: () => void): void {
   const done = () => { document.body.classList.remove('story'); then(); };
   $('btn-skip').onclick = () => (game.scene.getScene('story') as StoryScene).finish();
   sound.music(id === 'ending' ? 'ending' : 'story');
-  run('story', { id, onDone: done });
+  run('story', { id, onDone: done, outfit: currentOutfit().outfit });
 }
 
 function onFrame(w: World): void {
@@ -175,19 +180,24 @@ function setCooldown(id: string, cd: number): void {
   el.dataset.cd = cd > 0 ? String(Math.ceil(cd)) : '';
 }
 
-function onEnd(w: World): void {
+function onEnd(w: World, run: RunStats): void {
   document.body.classList.remove('playing');
   const entry = LEVELS[levelIdx];
+  const starsBefore = totalStars();
   if (w.status !== 'won') {
+    const rec = recordRun(entry.id, entry.zone, difficulty, w, run, starsBefore);
     showOverlay('result', `
       <h1>💕 Hugged too many times!</h1>
       <p>NAV-9000: "Recalculating... their eyes look BACKWARDS. Sneak up from the FRONT!"</p>
+      ${rewardsHtml(rec.newStickers, [], false)}
       <div class="row"><button data-act="retry" class="primary">Try again</button><button data-act="levels">Levels</button></div>`);
     return;
   }
   const firstClear = (loadStars()[entry.id] ?? 0) === 0;
   const stars = starsFor(w);
   saveStars(entry.id, stars);
+  const rec = entry.zone >= 0 ? recordRun(entry.id, entry.zone, difficulty, w, run, starsBefore) : { newStickers: [], newOutfits: [], newSock: false };
+  lastResult = { name: entry.data.name, stars, time: w.time, chased: w.timesChased, sock: w.socks.some(k => k.taken) };
   const zone = entry.zone >= 0 ? CAMPAIGN[entry.zone] : null;
   const zoneFinal = !!zone && zone.levels[zone.levels.length - 1] === entry.id;
   const isLast = levelIdx + 1 >= LEVELS.length || LEVELS[levelIdx + 1].zone < 0;
@@ -199,13 +209,50 @@ function onEnd(w: World): void {
         <li>${w.time <= w.level.parTime ? '⭐' : '☆'} Under ${formatTime(w.level.parTime)} (you: ${formatTime(w.time)})</li>
         <li>${w.timesChased === 0 ? '⭐' : '☆'} Never chased (chased ${w.timesChased}×)</li>
       </ul>
+      ${rewardsHtml(rec.newStickers, rec.newOutfits, rec.newSock)}
       <div class="row">
+        <button data-act="share" class="small">📸 Share</button>
         <button data-act="retry">Play again</button>
         <button data-act="levels">Levels</button>
         ${!isLast ? '<button data-act="next" class="primary">Next level ▶</button>' : ''}
       </div>`);
   if (zoneFinal && firstClear) playStory(entry.zone === 3 ? 'ending' : (`zone${entry.zone + 1}` as StoryId), result);
   else result();
+}
+
+let lastResult: { name: string; stars: number; time: number; chased: number; sock: boolean } | null = null;
+
+function rewardsHtml(stickers: { icon: string; name: string }[], outfits: { icon: string; name: string }[], sock: boolean): string {
+  const items = [
+    ...(sock ? ['🧦 You found the hidden sock!'] : []),
+    ...stickers.map(s => `${s.icon} New sticker: <b>${s.name}</b>`),
+    ...outfits.map(o => `${o.icon} New outfit: <b>${o.name}</b> (see Wardrobe)`),
+  ];
+  return items.length ? `<div class="rewards">${items.map(i => `<div>${i}</div>`).join('')}</div>` : '';
+}
+
+const hex = (n: number) => `#${n.toString(16).padStart(6, '0')}`;
+
+function showWardrobe(): void {
+  const stars = totalStars(), wearing = currentOutfit().id;
+  const cards = OUTFITS.map(o => {
+    const locked = stars < o.stars;
+    return `<button class="outfit ${o.id === wearing ? 'selected' : ''}" ${locked ? 'disabled' : `data-outfit="${o.id}"`}>
+      <span class="swatch" style="background:${hex(o.outfit.shirt)};border-color:${hex(o.outfit.shorts)}"><i style="background:${hex(o.outfit.flower)}"></i></span>
+      <b>${o.icon} ${o.name}</b><small>${locked ? `🔒 ${o.stars} ⭐` : o.id === wearing ? 'Wearing' : 'Wear it!'}</small></button>`;
+  }).join('');
+  showOverlay('levels', `
+    <div class="row top"><button data-act="home" class="small">◀ Back</button><h1>👕 Wardrobe</h1><span class="total">⭐ ${stars}</span></div>
+    <p>Earn stars to unlock outfits. Leo wears them in every level and story scene.</p>
+    <div class="grid">${cards}</div>`);
+}
+
+function showStickers(): void {
+  const earned = stickersEarned();
+  const cards = STICKERS.map(s => `<div class="sticker ${earned.has(s.id) ? 'got' : ''}"><span>${s.icon}</span><b>${s.name}</b><small>${s.desc}</small></div>`).join('');
+  showOverlay('levels', `
+    <div class="row top"><button data-act="home" class="small">◀ Back</button><h1>📒 Sticker Book</h1><span class="total">${earned.size}/${STICKERS.length}</span></div>
+    <div class="grid">${cards}</div>`);
 }
 
 // ---------------------------------------------------------------------------
@@ -227,12 +274,20 @@ $('panel').addEventListener('click', e => {
     localStorage.setItem('oops.difficulty', difficulty);
     showHome();
   } else if (b.dataset.level) showLevelCard(Number(b.dataset.level));
+  else if (b.dataset.outfit) {
+    wearOutfit(b.dataset.outfit);
+    (game.scene.getScene('title') as TitleScene | null)?.setOutfit(currentOutfit().outfit);
+    showWardrobe();
+  }
   else switch (b.dataset.act) {
     case 'go': case 'retry': startLevel(levelIdx); break;
     case 'next': showLevelCard(levelIdx + 1); break;
     case 'levels': showLevels(); break;
     case 'home': showHome(); break;
     case 'intro': playStory('intro', showHome); break;
+    case 'wardrobe': showWardrobe(); break;
+    case 'stickers': showStickers(); break;
+    case 'share': if (lastResult) void shareCard(game, lastResult); break;
     case 'resume': hideOverlay(); document.body.classList.add('playing'); game.scene.resume('game'); break;
   }
 });

@@ -69,7 +69,7 @@ export interface Hug { alien: number; t: number }
 
 type AlienEventType = 'spotted' | 'suspicious' | 'lost' | 'skid' | 'bump' | 'stun' | 'investigate' | 'fooled'
   | 'eat' | 'wake' | 'calm' | 'hug' | 'stolen' | 'beep' | 'tired';
-type PlaceEventType = 'bonk' | 'honk' | 'moonwalk' | 'donut' | 'noDonutRoom' | 'key' | 'gate' | 'item' | 'checkpoint'
+type PlaceEventType = 'sock' | 'bonk' | 'honk' | 'moonwalk' | 'donut' | 'noDonutRoom' | 'key' | 'gate' | 'item' | 'checkpoint'
   | 'win' | 'lose' | 'squeak' | 'lever' | 'hack' | 'shieldDown' | 'laserOpen' | 'laserClose' | 'tooLight' | 'alarm';
 
 export type GameEvent =
@@ -104,6 +104,7 @@ export class World {
   readonly checkpoints: Vec[];
   readonly levers: Lever[];
   readonly terminals: Terminal[];
+  readonly socks: Pickup[];
   donut: Donut | null = null;
   hug: Hug | null = null;
   alarm = false;
@@ -130,6 +131,7 @@ export class World {
     this.checkpoints = level.checkpoints.map(c => ({ ...c }));
     this.levers = level.levers.map(l => ({ ...l, armed: true, flipped: false }));
     this.terminals = level.terminals.map(t => ({ ...t, progress: 0, done: false }));
+    this.socks = level.socks.map(k => ({ ...k, taken: false }));
     this.aliens = level.aliens.map((spec, id) => this.makeAlien(spec, id));
   }
 
@@ -175,6 +177,7 @@ export class World {
     dst.checkpoints = this.checkpoints.map(c => ({ ...c }));
     dst.levers = this.levers.map(l => ({ ...l }));
     dst.terminals = this.terminals.map(t => ({ ...t }));
+    dst.socks = this.socks.map(k => ({ ...k }));
     dst.donut = this.donut ? { ...this.donut } : null;
     dst.hug = this.hug ? { ...this.hug } : null;
     dst.events = [];
@@ -319,6 +322,12 @@ export class World {
       if (this.near(cp, 24) && (p.respawn.x !== cp.x || p.respawn.y !== cp.y)) {
         p.respawn = { ...cp };
         this.emit({ type: 'checkpoint', x: cp.x, y: cp.y });
+      }
+    }
+    for (const sk of this.socks) {
+      if (!sk.taken && this.near(sk, 24)) {
+        sk.taken = true;
+        this.emit({ type: 'sock', x: sk.x, y: sk.y });
       }
     }
     for (const it of this.items) {

@@ -194,3 +194,12 @@ export function drawStatus(g: G, a: Alien, t: number): void {
     }
   }
 }
+
+export function drawSock(g: G, x: number, y: number, t: number): void {
+  const b = Math.sin(t * 3 + 1) * 2;
+  g.fillStyle(0x000000, 0.15).fillEllipse(x, y + 13, 18, 5);
+  g.fillStyle(0xffffff).fillRoundedRect(x - 5, y - 12 + b, 10, 16, 3).fillRoundedRect(x - 5, y + 0 + b, 15, 8, 4);
+  g.fillStyle(0xff4d6d).fillRect(x - 5, y - 9 + b, 10, 3).fillRect(x - 5, y - 3 + b, 10, 3);
+  g.fillStyle(0x4ad6ff).fillRoundedRect(x + 4, y + 1 + b, 6, 7, 3);
+  if (Math.floor(t * 3) % 4 === 0) g.fillStyle(0xffffff, 0.9).fillCircle(x + 8, y - 12 + b, 2);
+}

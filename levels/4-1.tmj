@@ -11,7 +11,7 @@
  "tilewidth": 48,
  "tileheight": 48,
  "nextlayerid": 3,
- "nextobjectid": 11,
+ "nextobjectid": 12,
  "properties": [
   {
    "name": "name",
@@ -560,6 +560,18 @@
     {
      "id": 1,
      "name": "",
+     "type": "Sock",
+     "x": 984,
+     "y": 72,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true
+    },
+    {
+     "id": 2,
+     "name": "",
      "type": "Terminal",
      "x": 120,
      "y": 120,
@@ -570,7 +582,7 @@
      "point": true
     },
     {
-     "id": 2,
+     "id": 3,
      "name": "",
      "type": "Item",
      "x": 696,
@@ -582,7 +594,7 @@
      "point": true
     },
     {
-     "id": 3,
+     "id": 4,
      "name": "",
      "type": "Terminal",
      "x": 1272,
@@ -594,7 +606,7 @@
      "point": true
     },
     {
-     "id": 4,
+     "id": 5,
      "name": "",
      "type": "PlayerStart",
      "x": 72,
@@ -606,7 +618,7 @@
      "point": true
     },
     {
-     "id": 5,
+     "id": 6,
      "name": "",
      "type": "Checkpoint",
      "x": 696,
@@ -618,7 +630,7 @@
      "point": true
     },
     {
-     "id": 6,
+     "id": 7,
      "name": "",
      "type": "Terminal",
      "x": 696,
@@ -630,7 +642,7 @@
      "point": true
     },
     {
-     "id": 7,
+     "id": 8,
      "name": "",
      "type": "Alien",
      "x": 120,
@@ -663,7 +675,7 @@
      ]
     },
     {
-     "id": 8,
+     "id": 9,
      "name": "",
      "type": "Alien",
      "x": 1032,
@@ -696,7 +708,7 @@
      ]
     },
     {
-     "id": 9,
+     "id": 10,
      "name": "",
      "type": "Alien",
      "x": 696,
@@ -725,7 +737,7 @@
      "point": true
     },
     {
-     "id": 10,
+     "id": 11,
      "name": "",
      "type": "Alien",
      "x": 168,

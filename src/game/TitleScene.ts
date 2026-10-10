@@ -2,7 +2,8 @@
 import Phaser from 'phaser';
 import type { AlienKind } from '../sim/config';
 import type { Alien } from '../sim/world';
-import { drawAlien } from './art/characters';
+import { DEFAULT_OUTFIT, drawAlien, drawLeo, type Outfit } from './art/characters';
+import type { Player } from '../sim/world';
 import { drawDaisyPlanet, drawShip, drawSpace } from './art/scenery';
 
 const W = 960, H = 540;
@@ -20,11 +21,15 @@ export class TitleScene extends Phaser.Scene {
   private g!: Phaser.GameObjects.Graphics;
   private t = 0;
   private parts: boolean[] = [false, false, false, false];
+  private outfit: Outfit = DEFAULT_OUTFIT;
   constructor() { super('title'); }
 
-  init(data: { parts?: boolean[] }): void {
+  init(data: { parts?: boolean[]; outfit?: Outfit }): void {
     this.parts = data.parts ?? this.parts;
+    this.outfit = data.outfit ?? this.outfit;
   }
+
+  setOutfit(o: Outfit): void { this.outfit = o; }
 
   create(): void {
     this.g = this.add.graphics();
@@ -48,6 +53,13 @@ export class TitleScene extends Phaser.Scene {
     drawDaisyPlanet(g, px, py, r, t * 0.3);
     const shipA = -2.25;
     drawShip(g, px + Math.cos(shipA) * (surface + 18), py + Math.sin(shipA) * (surface + 18), 1.4, t, this.parts, 0, shipA + Math.PI / 2);
+    // Leo next to his ship, showing off the current outfit
+    const leoA = -2.0, lx = px + Math.cos(leoA) * surface, ly = py + Math.sin(leoA) * surface;
+    const leo: Player = {
+      x: lx, y: ly, facing: 1, moving: false, running: false, hearts: 3, maxHearts: 3, invuln: 0, keys: 0, carried: [], moonwalkT: 0,
+      cd: { honk: 0, moonwalk: 0, donut: 0 }, footT: 0, respawn: { x: lx, y: ly },
+    };
+    drawLeo(g, leo, 1, 0, 'smug', this.outfit, t);
     // locals strolling across the planet, eyes looking back the way they came
     WALKERS.forEach((kind, i) => {
       const a = -1.95 + ((t * 0.035 + i / WALKERS.length) % 1) * 1.15;

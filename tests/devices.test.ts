@@ -187,3 +187,16 @@ describe('new aliens', () => {
     expect(w.aliens[0].state).toBe('investigate');
   });
 });
+
+describe('socks', () => {
+  it('a sock is a bonus pickup and not needed to win', () => {
+    const w = new World(ascii(['#######', '#PXI..#', '#######']));
+    const ev = collect(w, 1, { x: 1 });
+    expect(types(ev)).toContain('sock');
+    expect(w.status).toBe('won');
+    const w2 = new World(ascii(['#######', '#PI.X.#', '#######']));
+    collect(w2, 0.4, { x: 1 });
+    expect(w2.status).toBe('won');
+    expect(w2.socks[0].taken).toBe(false);
+  });
+});

@@ -11,7 +11,7 @@
  "tilewidth": 48,
  "tileheight": 48,
  "nextlayerid": 3,
- "nextobjectid": 7,
+ "nextobjectid": 8,
  "properties": [
   {
    "name": "name",
@@ -379,6 +379,18 @@
     {
      "id": 3,
      "name": "",
+     "type": "Sock",
+     "x": 1080,
+     "y": 312,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true
+    },
+    {
+     "id": 4,
+     "name": "",
      "type": "Item",
      "x": 936,
      "y": 408,
@@ -389,7 +401,7 @@
      "point": true
     },
     {
-     "id": 4,
+     "id": 5,
      "name": "",
      "type": "Checkpoint",
      "x": 168,
@@ -401,7 +413,7 @@
      "point": true
     },
     {
-     "id": 5,
+     "id": 6,
      "name": "Blorp",
      "type": "Alien",
      "x": 456,
@@ -447,7 +459,7 @@
      ]
     },
     {
-     "id": 6,
+     "id": 7,
      "name": "",
      "type": "Alien",
      "x": 792,

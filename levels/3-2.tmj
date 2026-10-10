@@ -11,7 +11,7 @@
  "tilewidth": 48,
  "tileheight": 48,
  "nextlayerid": 3,
- "nextobjectid": 8,
+ "nextobjectid": 9,
  "properties": [
   {
    "name": "name",
@@ -466,6 +466,18 @@
     },
     {
      "id": 4,
+     "name": "",
+     "type": "Sock",
+     "x": 1272,
+     "y": 552,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true
+    },
+    {
+     "id": 5,
      "name": "Big Bertha",
      "type": "Alien",
      "x": 360,
@@ -507,7 +519,7 @@
      ]
     },
     {
-     "id": 5,
+     "id": 6,
      "name": "",
      "type": "Alien",
      "x": 600,
@@ -540,7 +552,7 @@
      ]
     },
     {
-     "id": 6,
+     "id": 7,
      "name": "",
      "type": "Alien",
      "x": 1176,
@@ -573,7 +585,7 @@
      ]
     },
     {
-     "id": 7,
+     "id": 8,
      "name": "",
      "type": "Alien",
      "x": 1080,

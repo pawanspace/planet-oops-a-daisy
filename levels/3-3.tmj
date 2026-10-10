@@ -11,7 +11,7 @@
  "tilewidth": 48,
  "tileheight": 48,
  "nextlayerid": 3,
- "nextobjectid": 21,
+ "nextobjectid": 22,
  "properties": [
   {
    "name": "name",
@@ -637,6 +637,18 @@
     {
      "id": 1,
      "name": "",
+     "type": "Sock",
+     "x": 72,
+     "y": 72,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true
+    },
+    {
+     "id": 2,
+     "name": "",
      "type": "Item",
      "x": 120,
      "y": 72,
@@ -647,7 +659,7 @@
      "point": true
     },
     {
-     "id": 2,
+     "id": 3,
      "name": "",
      "type": "Checkpoint",
      "x": 1272,
@@ -659,7 +671,7 @@
      "point": true
     },
     {
-     "id": 3,
+     "id": 4,
      "name": "",
      "type": "PlayerStart",
      "x": 1272,
@@ -671,7 +683,7 @@
      "point": true
     },
     {
-     "id": 4,
+     "id": 5,
      "name": "",
      "type": "Alien",
      "x": 72,
@@ -713,7 +725,7 @@
      ]
     },
     {
-     "id": 5,
+     "id": 6,
      "name": "",
      "type": "Alien",
      "x": 504,
@@ -755,7 +767,7 @@
      ]
     },
     {
-     "id": 6,
+     "id": 7,
      "name": "",
      "type": "Alien",
      "x": 936,
@@ -797,7 +809,7 @@
      ]
     },
     {
-     "id": 7,
+     "id": 8,
      "name": "",
      "type": "Alien",
      "x": 264,
@@ -839,7 +851,7 @@
      ]
     },
     {
-     "id": 8,
+     "id": 9,
      "name": "",
      "type": "Alien",
      "x": 696,
@@ -881,7 +893,7 @@
      ]
     },
     {
-     "id": 9,
+     "id": 10,
      "name": "",
      "type": "Alien",
      "x": 1128,
@@ -923,7 +935,7 @@
      ]
     },
     {
-     "id": 10,
+     "id": 11,
      "name": "",
      "type": "Alien",
      "x": 456,
@@ -965,7 +977,7 @@
      ]
     },
     {
-     "id": 11,
+     "id": 12,
      "name": "",
      "type": "Alien",
      "x": 888,
@@ -1007,7 +1019,7 @@
      ]
     },
     {
-     "id": 12,
+     "id": 13,
      "name": "",
      "type": "Alien",
      "x": 1320,
@@ -1049,7 +1061,7 @@
      ]
     },
     {
-     "id": 13,
+     "id": 14,
      "name": "",
      "type": "Alien",
      "x": 648,
@@ -1091,7 +1103,7 @@
      ]
     },
     {
-     "id": 14,
+     "id": 15,
      "name": "",
      "type": "Alien",
      "x": 1080,
@@ -1133,7 +1145,7 @@
      ]
     },
     {
-     "id": 15,
+     "id": 16,
      "name": "",
      "type": "Alien",
      "x": 216,
@@ -1175,7 +1187,7 @@
      ]
     },
     {
-     "id": 16,
+     "id": 17,
      "name": "",
      "type": "Alien",
      "x": 840,
@@ -1217,7 +1229,7 @@
      ]
     },
     {
-     "id": 17,
+     "id": 18,
      "name": "",
      "type": "Alien",
      "x": 1272,
@@ -1259,7 +1271,7 @@
      ]
     },
     {
-     "id": 18,
+     "id": 19,
      "name": "",
      "type": "Alien",
      "x": 408,
@@ -1301,7 +1313,7 @@
      ]
     },
     {
-     "id": 19,
+     "id": 20,
      "name": "",
      "type": "Alien",
      "x": 1368,
@@ -1334,7 +1346,7 @@
      ]
     },
     {
-     "id": 20,
+     "id": 21,
      "name": "",
      "type": "Alien",
      "x": 72,

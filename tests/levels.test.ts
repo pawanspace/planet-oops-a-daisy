@@ -63,7 +63,7 @@ describe.each(files)('level %s', file => {
   });
 
   it('puts every object on walkable floor', () => {
-    for (const v of [...lvl.keys, ...lvl.items, ...lvl.checkpoints]) expect(walkable(v), `${JSON.stringify(at(v))}`).toBe(true);
+    for (const v of [...lvl.keys, ...lvl.items, ...lvl.checkpoints, ...lvl.socks]) expect(walkable(v), `${JSON.stringify(at(v))}`).toBe(true);
     for (const a of lvl.aliens) {
       expect(walkable(a), `alien at ${JSON.stringify(at(a))}`).toBe(true);
       for (const wp of a.route) expect(walkable(wp), `route point ${JSON.stringify(at(wp))}`).toBe(true);
@@ -81,7 +81,7 @@ describe.each(files)('level %s', file => {
     const { grid: open } = solveGates(lvl);
     const d = open.distField(at(lvl.start).c, at(lvl.start).r);
     for (const it of lvl.items) expect(open.dist(d, at(it).c, at(it).r), `item ${JSON.stringify(at(it))}`).toBeLessThan(Infinity);
-    for (const cp of lvl.checkpoints) expect(open.dist(d, at(cp).c, at(cp).r)).toBeLessThan(Infinity);
+    for (const cp of [...lvl.checkpoints, ...lvl.socks]) expect(open.dist(d, at(cp).c, at(cp).r)).toBeLessThan(Infinity);
   });
 
   it('gates, lasers and shields cannot be skipped', () => {

@@ -11,7 +11,7 @@
  "tilewidth": 48,
  "tileheight": 48,
  "nextlayerid": 3,
- "nextobjectid": 9,
+ "nextobjectid": 10,
  "properties": [
   {
    "name": "name",
@@ -499,6 +499,18 @@
     {
      "id": 7,
      "name": "",
+     "type": "Sock",
+     "x": 264,
+     "y": 504,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true
+    },
+    {
+     "id": 8,
+     "name": "",
      "type": "Alien",
      "x": 408,
      "y": 360,
@@ -530,7 +542,7 @@
      ]
     },
     {
-     "id": 8,
+     "id": 9,
      "name": "",
      "type": "Alien",
      "x": 1320,

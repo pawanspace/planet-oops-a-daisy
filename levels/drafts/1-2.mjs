@@ -8,7 +8,7 @@ export default {
  "grid": [
   "###########################",
   "#.........................#",
-  "#.HHHHH.HH.HH.HHHHH.HH.HH.#",
+  "#.HHHHH.HH.HH.HHHHH.HHXHH.#",
   "#.HHHHH.HHHHH.HHHHH.HHHHH.#",
   "#.HH.HH.HHHHH..HHHH.HHHHH.#",
   "#.........................#",

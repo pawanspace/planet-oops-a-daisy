@@ -2,7 +2,7 @@
 // Usage: node tools/draft-level.mjs levels/drafts/sandbox.mjs   -> writes levels/<id>.tmj
 // Legend: # wall  . floor  H hedge  G gate  ~ carpet  ! squeaky  ^ > v < conveyors
 //         o pressure plate  | laser  = shield
-//         P PlayerStart  K Key  I Item  C Checkpoint  L Lever  T Terminal   (all on floor)
+//         P PlayerStart  K Key  I Item  C Checkpoint  L Lever  T Terminal  X Sock (hidden collectible)   (all on floor)
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
@@ -10,9 +10,9 @@ import { resolve } from 'node:path';
 const S = 48;
 const CODE = {
   '#': 2, '.': 1, H: 3, G: 4, '~': 5, '!': 6, '^': 7, '>': 8, v: 9, '<': 10, o: 11, '|': 12, '=': 13,
-  P: 1, K: 1, I: 1, C: 1, L: 1, T: 1,
+  P: 1, K: 1, I: 1, C: 1, L: 1, T: 1, X: 1,
 };
-const MARK = { P: 'PlayerStart', K: 'Key', I: 'Item', C: 'Checkpoint', L: 'Lever', T: 'Terminal' };
+const MARK = { P: 'PlayerStart', K: 'Key', I: 'Item', C: 'Checkpoint', L: 'Lever', T: 'Terminal', X: 'Sock' };
 
 const specPath = process.argv[2];
 if (!specPath) { console.error('usage: node tools/draft-level.mjs <spec.mjs>'); process.exit(1); }

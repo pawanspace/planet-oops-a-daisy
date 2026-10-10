@@ -11,7 +11,7 @@
  "tilewidth": 48,
  "tileheight": 48,
  "nextlayerid": 3,
- "nextobjectid": 11,
+ "nextobjectid": 12,
  "properties": [
   {
    "name": "name",
@@ -551,6 +551,18 @@
     {
      "id": 4,
      "name": "",
+     "type": "Sock",
+     "x": 1272,
+     "y": 72,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true
+    },
+    {
+     "id": 5,
+     "name": "",
      "type": "PlayerStart",
      "x": 72,
      "y": 696,
@@ -561,7 +573,7 @@
      "point": true
     },
     {
-     "id": 5,
+     "id": 6,
      "name": "",
      "type": "Item",
      "x": 1224,
@@ -573,7 +585,7 @@
      "point": true
     },
     {
-     "id": 6,
+     "id": 7,
      "name": "",
      "type": "Alien",
      "x": 168,
@@ -614,7 +626,7 @@
      ]
     },
     {
-     "id": 7,
+     "id": 8,
      "name": "",
      "type": "Alien",
      "x": 792,
@@ -655,7 +667,7 @@
      ]
     },
     {
-     "id": 8,
+     "id": 9,
      "name": "",
      "type": "Alien",
      "x": 792,
@@ -696,7 +708,7 @@
      ]
     },
     {
-     "id": 9,
+     "id": 10,
      "name": "",
      "type": "Alien",
      "x": 216,
@@ -729,7 +741,7 @@
      ]
     },
     {
-     "id": 10,
+     "id": 11,
      "name": "Teacher",
      "type": "Alien",
      "x": 648,

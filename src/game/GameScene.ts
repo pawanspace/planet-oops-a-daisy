@@ -7,8 +7,9 @@ import { T } from '../sim/level';
 import type { Controls } from './controls';
 import {
   drawCheckpoint, drawCone, drawDonut, drawDynamicTiles, drawGround, drawItem,
-  drawKey, drawLever, drawStatus, drawTerminal, dynamicTiles,
+  drawKey, drawLever, drawSock, drawStatus, drawTerminal, dynamicTiles,
 } from './draw';
+import { emptyRun, type RunStats } from './progress';
 import { DEFAULT_OUTFIT, alienHeight, drawAlien, drawHearts, drawLeo, updateFace, type Mood, type Outfit } from './art/characters';
 import { sound } from './sound';
 import { Fx } from './fx';
@@ -18,7 +19,7 @@ export interface SceneData {
   level: LevelData;
   difficulty: Difficulty;
   controls: Controls;
-  onEnd: (w: World) => void;
+  onEnd: (w: World, run: RunStats) => void;
   onFrame: (w: World) => void;
   outfit?: Outfit;
   theme?: ZoneTheme;
@@ -102,6 +103,7 @@ export class GameScene extends Phaser.Scene {
   private flyers: Flyer[] = [];
   private theme: ZoneTheme = 'suburbia';
   private stepT = 0;
+  private run: RunStats = emptyRun();
   private beatT = 0;
 
   constructor() { super('game'); }
@@ -124,6 +126,7 @@ export class GameScene extends Phaser.Scene {
     this.skidFrom = this.world.aliens.map(a => ({ x: a.x, y: a.y }));
     this.flights = [];
     this.theme = data.theme ?? 'suburbia';
+    this.run = emptyRun();
     const mw = this.world.grid.w * TILE, mh = this.world.grid.h * TILE;
     this.flyers = [0, 1, 2].map(i => ({ x: (mw * (i * 0.37 + 0.1)) % mw, y: mh * (0.2 + i * 0.3), vx: (i % 2 ? -1 : 1) * (30 + i * 12), phase: i * 2.1 }));
   }
@@ -205,7 +208,7 @@ export class GameScene extends Phaser.Scene {
     this.data_.onFrame(w);
     if (w.status !== 'playing' && !this.ended) {
       this.ended = true;
-      this.time.delayedCall(w.status === 'won' ? 900 : 700, () => this.data_.onEnd(w));
+      this.time.delayedCall(w.status === 'won' ? 900 : 700, () => this.data_.onEnd(w, this.run));
     }
   }
 
@@ -218,6 +221,7 @@ export class GameScene extends Phaser.Scene {
     }
     if (this.leoJump > 0) this.leoJump -= dt;
     const p = w.player;
+    if (p.running) this.run.ran = true;
     // music + sound atmosphere
     sound.chase(w.aliens.some(a => a.state === 'chase') || w.alarm);
     const watch = Math.max(0, ...w.aliens.map(a => (a.state === 'suspicious' || a.kind === 'drone' ? a.sus : 0)));
@@ -271,6 +275,13 @@ export class GameScene extends Phaser.Scene {
 
   private onEvent(e: GameEvent): void {
     const cam = this.cameras.main;
+    const r = this.run;
+    if (e.type === 'hug') r.hugs++;
+    else if (e.type === 'eat') { r.donutsEaten++; if (this.world.aliens[e.alien]?.kind === 'heavy') r.heavyDonuts++; }
+    else if (e.type === 'honk') r.honks++;
+    else if (e.type === 'moonwalk') r.moonwalks++;
+    else if (e.type === 'skid') r.skids++;
+    else if (e.type === 'lost' || e.type === 'tired') r.escapes++;
     if ('alien' in e && ['spotted', 'suspicious', 'hug', 'lost', 'tired', 'eat', 'wake', 'investigate', 'fooled', 'stolen'].includes(e.type)) {
       const kind = this.world.aliens[e.alien]?.kind;
       const pitch = ({ kid: 1.5, heavy: 0.6, hugger: 1.1, scooter: 1.25, lookout: 0.9, stroller: 1, drone: 2 } as const)[kind ?? 'stroller'];
@@ -300,6 +311,7 @@ export class GameScene extends Phaser.Scene {
       case 'key': this.hitstop = 0.1; this.leoJump = 0.4; this.fxs.burst('spark', e.x, e.y, 14, { color: 0xffd23c, speed: 120 }); sound.pickup(); this.say(e.x, e.y, 'KEY!', '#ffd23c', 24); break;
       case 'gate': this.fxs.burst('spark', e.x, e.y, 16, { color: 0xffa028, speed: 140 }); sound.gate(); drawGround(this.ground, this.world.grid, this.theme); this.say(e.x, e.y, 'GATE OPEN!', '#ffa028', 22); break;
       case 'item': this.hitstop = 0.12; this.leoJump = 0.5; this.punch = 0.08; this.fxs.burst('spark', e.x, e.y, 24, { color: 0xfff27a, speed: 160 }); sound.pickup(); this.say(e.x, e.y, 'SHIP PART!', '#fff27a', 26); break;
+      case 'sock': this.leoJump = 0.4; this.fxs.burst('spark', e.x, e.y, 16, { color: 0xffffff, speed: 120 }); sound.pickup(); this.say(e.x, e.y, '🧦 A SOCK?!', '#ffffff', 22); break;
       case 'checkpoint': this.fxs.burst('spark', e.x, e.y - 10, 10, { color: 0x4ae07a, speed: 90 }); sound.checkpoint(); this.say(e.x, e.y, 'Checkpoint!', '#4ae07a', 16); break;
       case 'squeak': sound.squeak(); this.say(e.x, e.y, 'SQUEAK!', '#ffe65a', 14); break;
       case 'lever': sound.gate(); this.say(e.x, e.y, 'BELTS FLIPPED!', '#fff07a', 18); break;
@@ -329,6 +341,7 @@ export class GameScene extends Phaser.Scene {
     for (const term of w.terminals) drawTerminal(g, term, t);
     for (const k of w.keys) if (!k.taken) drawKey(g, k.x, k.y, t);
     for (const it of w.items) if (!it.taken) drawItem(g, it.x, it.y, t);
+    for (const sk of w.socks) if (!sk.taken) drawSock(g, sk.x, sk.y, t);
     if (w.donut && !this.flights.length) drawDonut(g, w.donut.x, w.donut.y, t);
     for (const f of this.flights) {
       const k = f.t, x = f.x0 + (f.x1 - f.x0) * k, y = f.y0 + (f.y1 - f.y0) * k - Math.sin(k * Math.PI) * 50;

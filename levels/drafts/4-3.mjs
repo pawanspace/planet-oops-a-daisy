@@ -15,7 +15,7 @@ export default {
   "#......#H.HHH.HHH.HHH.HHH.HHH....#",
   "#......#H.HHH.HHH.HHH.HHH.HHH....#",
   "#...C..#H.HHH.HHH.HHH.HHH.HHH....#",
-  "#...........H...H...H...H...H.HHH#",
+  "#...........H...H...H..XH...H.HHH#",
   "#......#H.HHH.HHH.HHH.HHH.HHH.HHH#",
   "#......#H.HHH.HHH.HHH.HHH.HHH.HHH#",
   "#......#H.HHH.HHH.HHH.HHH.HHH.HHH#",

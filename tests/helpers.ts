@@ -7,7 +7,7 @@ import { NO_INPUT, type Input, type World } from '../src/sim/world';
 export const CHARS: Record<string, TileCode> = {
   '#': T.Wall, '.': T.Floor, 'H': T.Hedge, 'G': T.Gate, '~': T.Carpet, '!': T.Squeaky,
   '^': T.ConvUp, '>': T.ConvRight, 'v': T.ConvDown, '<': T.ConvLeft, 'o': T.Plate, '|': T.Laser, '=': T.Shield,
-  'P': T.Floor, 'K': T.Floor, 'I': T.Floor, 'C': T.Floor, 'L': T.Floor, 'T': T.Floor,
+  'P': T.Floor, 'K': T.Floor, 'I': T.Floor, 'C': T.Floor, 'L': T.Floor, 'T': T.Floor, 'X': T.Floor,
 };
 
 /** Build a level from ASCII (legend above). */
@@ -24,6 +24,7 @@ export function ascii(rows: string[], aliens: AlienSpec[] = [], extra: Partial<L
     if (ch === 'C') lvl.checkpoints.push(pos);
     if (ch === 'L') lvl.levers.push(pos);
     if (ch === 'T') lvl.terminals.push(pos);
+    if (ch === 'X') lvl.socks.push(pos);
   }));
   lvl.tiles = tiles;
   return lvl;

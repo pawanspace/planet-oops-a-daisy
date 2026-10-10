@@ -54,6 +54,7 @@ export interface LevelData {
   items: Vec[];
   levers: Vec[];
   terminals: Vec[];
+  socks: Vec[];          // hidden collectible (optional, not needed to win)
   aliens: AlienSpec[];
   parTime: number;       // seconds, for the speed star
   alarmAfter: number;    // pickups (keys + items) before the alarm goes off (0 = never)
@@ -67,7 +68,7 @@ export function snapToTile(p: Vec): Vec {
 export function emptyLevel(width: number, height: number): LevelData {
   return {
     name: 'Untitled', hint: '', width, height, tiles: new Array(width * height).fill(T.Wall),
-    start: { x: TILE * 1.5, y: TILE * 1.5 }, checkpoints: [], keys: [], items: [], levers: [], terminals: [],
+    start: { x: TILE * 1.5, y: TILE * 1.5 }, checkpoints: [], keys: [], items: [], levers: [], terminals: [], socks: [],
     aliens: [], parTime: 60, alarmAfter: 0,
   };
 }
@@ -133,6 +134,7 @@ export function loadTiled(map: TiledMap, fallbackName = 'Untitled'): LevelData {
         case 'Item': level.items.push(pos); break;
         case 'Lever': level.levers.push(pos); break;
         case 'Terminal': level.terminals.push(pos); break;
+        case 'Sock': level.socks.push(pos); break;
         case 'Alien': {
           const kind = String(p.kind ?? 'stroller') as AlienKind;
           if (!ALIEN_KINDS.includes(kind)) throw new Error(`Alien ${o.id}: unknown kind "${kind}"`);
