@@ -350,8 +350,8 @@
         "WWWWWWWWWWWWWWWWWW"
       ],
       aliens: [
-        // Guard 1: patrols row 10 cols 2 to 6 — directly guards Keycard at (1,10)
-        { c: 4, r: 10, dir: 1, axis: 'x', min: 2, max: 6, spd: 65 },
+        // Guard 1: tightly blockades the Keycard alcove entrance at (1,10) — impossible to sneak past without donut!
+        { c: 2, r: 10, dir: -1, axis: 'x', min: 1.8, max: 3.2, spd: 60 },
         // Guard 2: patrols row 7 cols 9 to 11 — guards the mid-level crossing
         { c: 10, r: 7, dir: 1, axis: 'x', min: 9, max: 11, spd: 65 },
         // Guard 3: patrols row 1 cols 11 to 14 — guards the approach to Gate at (16,1)
@@ -511,6 +511,7 @@
     donut_timer: 0,
     donut_x: 0,
     donut_y: 0,
+    donut_eater_index: -1,
 
     // Aliens
     aliens: [],
@@ -606,6 +607,7 @@
     state.moonwalk_timer = 0;
     state.donut_cooldown = 0;
     state.donut_timer = 0;
+    state.donut_eater_index = -1;
 
     // Load Aliens
     state.aliens = tmpl.aliens.map((a, i) => ({
@@ -627,6 +629,9 @@
       alert: false,
       chasing: false,
       lost_sight_t: 0,
+      sugar_rush_t: 0,
+      is_eating: false,
+      eat_t: 0,
       palette_id: i % 5
     }));
 
@@ -719,7 +724,7 @@
         spawn_floating_text(state.player_x, state.player_y - 20, "👟 MOONWALK ON!", "#cc66ff");
       }
     } else if (num === 3) {
-      // 🍩 Space Donut Toss (Unpredictable, wild bounce in a random direction!)
+      // 🍩 Space Donut Toss (Unpredictable, wild bounce in a nearby area!)
       if (state.donut_cooldown <= 0) {
         const landing = find_donut_landing();
         if (!landing) {
@@ -728,13 +733,28 @@
         }
 
         state.donut_cooldown = 10.0 * diff.cooldown_mult;
-        state.donut_timer = 8.0;
+        state.donut_timer = 9.0;
         state.donut_x = landing.x;
         state.donut_y = landing.y;
         audio.play_donut();
 
         // Burst of sweet pastry crumbs at landing point
         spawn_burst(landing.x, landing.y, 14, 1);
+
+        // Target ONLY the single closest alien within smelling range (~185px)
+        let closest_idx = -1;
+        let closest_dist = 185;
+        state.aliens.forEach((a, idx) => {
+          const d = Math.hypot(a.x - landing.x, a.y - landing.y);
+          if (d < closest_dist) {
+            closest_dist = d;
+            closest_idx = idx;
+          }
+        });
+        state.donut_eater_index = closest_idx;
+        if (closest_idx >= 0) {
+          spawn_floating_text(state.aliens[closest_idx].x, state.aliens[closest_idx].y - 24, "🍩 SMELLS DONUT!", "#ff4081");
+        }
 
         const label = landing.is_wild ? "🍩 WILD BOUNCE!" : "🍩 DONUT TOSS!";
         spawn_floating_text(state.donut_x, state.donut_y - 14, label, "#ff4081");
@@ -909,25 +929,56 @@
       state.gate_open = plate_on; // Laser gate stays open while pressed
     }
 
-    // 5. UPDATE ALIENS (Clean, Predictable, Arcade-Quality Movement with Line-of-Sight Awareness)
-    state.aliens.forEach(a => {
-      a.phase += dt * 9;
+    // 5. UPDATE ALIENS (Clean, Predictable, Arcade-Quality Movement with Line-of-Sight Awareness & Sugar Rush)
+    state.aliens.forEach((a, i) => {
+      a.phase += dt * (a.sugar_rush_t > 0 ? 18 : (a.is_eating ? 14 : 9));
+
+      // Sugar Rush countdown & sparkling particle trail
+      if (a.sugar_rush_t > 0) {
+        a.sugar_rush_t -= dt;
+        if (Math.random() < 0.28) {
+          spawn_burst(a.x + (Math.random() - 0.5) * 12, a.y + (Math.random() - 0.5) * 12, 1, 0);
+        }
+      }
 
       if (a.frozen_t > 0) {
         // Alien is frozen in place: cannot patrol or chase, but remains a solid obstacle!
         a.frozen_t -= dt;
+      } else if (a.is_eating) {
+        // Alien is happily munching the donut!
+        a.eat_t -= dt;
+        a.vx = 0;
+        a.vy = 0;
+        if (a.eat_t <= 0) {
+          a.is_eating = false;
+          a.sugar_rush_t = 6.0; // 6 seconds of DOUBLE SPEED!
+          audio.play_pickup();
+          spawn_floating_text(a.x, a.y - 24, "⚡️ SUGAR RUSH! 2x SPEED!", "#ffd600");
+          spawn_burst(a.x, a.y, 18, 0);
+        }
       } else {
-        // Active speed: base speed or boosted alarm speed when keycard / objective is active
+        // Active speed: base speed doubled if in Sugar Rush, boosted if alarms active
+        const sugar_mult = (a.sugar_rush_t > 0) ? 2.0 : 1.0;
         const cur_spd = (state.has_key || state.lever_pulled || state.terminals_hacked > 0) 
-          ? (a.base_spd * 1.2) 
-          : a.base_spd;
+          ? (a.base_spd * 1.2 * sugar_mult) 
+          : (a.base_spd * sugar_mult);
         const global_alarm = state.has_key || state.lever_pulled || (state.terminals_hacked > 0);
 
-        // A. Lured by Donut (sweet scent overrides normal patrol!)
+        // A. Lured by Donut (ONLY the single targeted alien!)
         let lured_by_donut = false;
-        if (state.donut_timer > 0) {
+        if (state.donut_timer > 0 && i === state.donut_eater_index) {
           const dist_to_donut = Math.hypot(a.x - state.donut_x, a.y - state.donut_y);
-          if (dist_to_donut < 180) {
+          if (dist_to_donut < 18) {
+            // REACHED THE DONUT: Start Eating!
+            state.donut_timer = 0; // Donut is eaten off the ground!
+            state.donut_eater_index = -1;
+            a.is_eating = true;
+            a.eat_t = 1.2; // 1.2 seconds of chewing
+            spawn_floating_text(a.x, a.y - 20, "🍩 NOM NOM NOM!", "#ff4081");
+            spawn_burst(a.x, a.y, 12, 1);
+            lured_by_donut = true;
+          } else {
+            // Walking toward donut
             lured_by_donut = true;
             a.alert = false;
             a.chasing = false;
@@ -936,14 +987,14 @@
             a.vy = Math.sin(angle);
             if (a.axis === 'x') a.dir = Math.sign(a.vx) || 1;
             else a.dir = Math.sign(a.vy) || 1;
-            const nextX = a.x + a.vx * cur_spd * 0.85 * dt;
-            const nextY = a.y + a.vy * cur_spd * 0.85 * dt;
+            const nextX = a.x + a.vx * a.base_spd * 0.9 * dt;
+            const nextY = a.y + a.vy * a.base_spd * 0.9 * dt;
             if (can_stand(nextX, a.y)) a.x = nextX;
             if (can_stand(a.x, nextY)) a.y = nextY;
           }
         }
 
-        if (!lured_by_donut) {
+        if (!lured_by_donut && !a.is_eating) {
           // B. Line-of-sight Player Detection
           const dist_to_player = Math.hypot(a.x - state.player_x, a.y - state.player_y);
           let sees_player = false;
@@ -980,7 +1031,7 @@
             a.alert = true;
 
             // Charge along corridor directly toward player!
-            const chase_spd = a.base_spd * 1.35;
+            const chase_spd = a.base_spd * 1.35 * sugar_mult;
             if (a.axis === 'x') {
               const to_p = Math.sign(state.player_x - a.x);
               if (to_p !== 0) a.dir = to_p;
@@ -1005,7 +1056,7 @@
               spawn_floating_text(a.x, a.y - 18, "❓", "#ffb300");
             } else {
               // Continue forward along corridor during brief search window
-              const chase_spd = a.base_spd * 1.1;
+              const chase_spd = a.base_spd * 1.1 * sugar_mult;
               if (a.axis === 'x') {
                 const nextX = a.x + a.dir * chase_spd * dt;
                 if (can_stand(nextX, a.y)) a.x = nextX;
@@ -1090,6 +1141,7 @@
     audio.play_bonk();
     state.hearts--;
     state.invincible_t = 1.8; // Safe respawn window
+    state.donut_eater_index = -1;
 
     // 1. Reset player back to start of maze
     const tmpl = MAZE_TEMPLATES[state.level_index];
@@ -1103,6 +1155,9 @@
       a.alert = false;
       a.chasing = false;
       a.lost_sight_t = 0;
+      a.sugar_rush_t = 0;
+      a.is_eating = false;
+      a.eat_t = 0;
       a.dir = (a.home_dir !== undefined) ? a.home_dir : 1;
       a.vx = (a.axis === 'x') ? a.dir : 0;
       a.vy = (a.axis === 'y') ? a.dir : 0;
@@ -1948,18 +2003,29 @@
     ctx.quadraticCurveTo(foot_face_x * 2, -26, 0, -29);
     ctx.stroke();
 
-    ctx.fillStyle = a.alert ? '#ff1744' : pal.antenna;
-    if (a.alert) {
-      ctx.shadowColor = '#ff1744';
-      ctx.shadowBlur = 8;
+    const antenna_color = (a.sugar_rush_t > 0) ? '#ffd600' : (a.alert ? '#ff1744' : pal.antenna);
+    ctx.fillStyle = antenna_color;
+    if (a.sugar_rush_t > 0 || a.alert) {
+      ctx.shadowColor = antenna_color;
+      ctx.shadowBlur = (a.sugar_rush_t > 0) ? 14 : 8;
     }
     ctx.beginPath();
-    ctx.arc(0, -30, a.alert ? 5 : 3.5, 0, Math.PI * 2);
+    ctx.arc(0, -30, (a.sugar_rush_t > 0) ? 6 : (a.alert ? 5 : 3.5), 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0;
 
-    // Alert Exclamation Badge above antenna if hunting
-    if (a.alert && a.frozen_t <= 0) {
+    // Badges above antenna
+    if (a.sugar_rush_t > 0 && a.frozen_t <= 0) {
+      ctx.font = 'bold 12px -apple-system, sans-serif';
+      ctx.fillStyle = '#ffd600';
+      ctx.textAlign = 'center';
+      ctx.fillText('⚡️ 2x', 0, -40);
+    } else if (a.is_eating) {
+      ctx.font = 'bold 12px -apple-system, sans-serif';
+      ctx.fillStyle = '#ff4081';
+      ctx.textAlign = 'center';
+      ctx.fillText('🍩 NOM!', 0, -40);
+    } else if (a.alert && a.frozen_t <= 0) {
       ctx.font = 'bold 13px -apple-system, sans-serif';
       ctx.fillStyle = '#ff1744';
       ctx.textAlign = 'center';
