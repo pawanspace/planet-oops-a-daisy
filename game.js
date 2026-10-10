@@ -209,6 +209,22 @@
       });
     }
 
+    play_alert() {
+      if (!this.enabled || !this.ctx) return;
+      const t = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(520, t);
+      osc.frequency.exponentialRampToValueAtTime(1040, t + 0.12);
+      gain.gain.setValueAtTime(0.15, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.18);
+    }
+
     play_win() {
       if (!this.enabled || !this.ctx) return;
       const t = this.ctx.currentTime;
@@ -534,6 +550,21 @@
     return true;
   }
 
+  // Fast raycast line-of-sight check between alien and player
+  function has_line_of_sight(x1, y1, x2, y2) {
+    const dist = Math.hypot(x2 - x1, y2 - y1);
+    if (dist > 185) return false;
+    const steps = Math.max(1, Math.floor(dist / 8));
+    for (let i = 1; i < steps; i++) {
+      const rx = x1 + (x2 - x1) * (i / steps);
+      const ry = y1 + (y2 - y1) * (i / steps);
+      const c = Math.floor(rx / TILE);
+      const r = Math.floor(ry / TILE);
+      if (is_wall(c, r)) return false;
+    }
+    return true;
+  }
+
   // ---------------------------------------------------------------------------
   // LEVEL INITIALIZATION
   // ---------------------------------------------------------------------------
@@ -582,6 +613,7 @@
       y: a.r * TILE + TILE / 2,
       home_c: a.c,
       home_r: a.r,
+      home_dir: a.dir,
       dir: a.dir,
       vx: (a.axis === 'x') ? a.dir : 0,
       vy: (a.axis === 'y') ? a.dir : 0,
@@ -593,6 +625,8 @@
       phase: i * 1.5,
       frozen_t: 0,
       alert: false,
+      chasing: false,
+      lost_sight_t: 0,
       palette_id: i % 5
     }));
 
@@ -685,51 +719,79 @@
         spawn_floating_text(state.player_x, state.player_y - 20, "👟 MOONWALK ON!", "#cc66ff");
       }
     } else if (num === 3) {
-      // 🍩 Space Donut Toss (Lure aliens toward it)
+      // 🍩 Space Donut Toss (Unpredictable, wild bounce in a random direction!)
       if (state.donut_cooldown <= 0) {
-        let dx = 0, dy = 0;
-        if (state.face_dir === 0) dy = -TILE * 1.5;
-        else if (state.face_dir === 1) dx = TILE * 1.5;
-        else if (state.face_dir === 2) dy = TILE * 1.5;
-        else if (state.face_dir === 3) dx = -TILE * 1.5;
-
-        const landing = find_donut_landing(dx, dy);
+        const landing = find_donut_landing();
         if (!landing) {
           spawn_floating_text(state.player_x, state.player_y - 20, "🍩 NO CLEAR LANDING SPOT", "#ff9100");
           return;
         }
 
-        state.donut_cooldown = 12.0 * diff.cooldown_mult;
+        state.donut_cooldown = 10.0 * diff.cooldown_mult;
         state.donut_timer = 8.0;
         state.donut_x = landing.x;
         state.donut_y = landing.y;
         audio.play_donut();
-        spawn_floating_text(state.donut_x, state.donut_y - 14, "🍩 DONUT TOSS!", "#ff4081");
+
+        // Burst of sweet pastry crumbs at landing point
+        spawn_burst(landing.x, landing.y, 14, 1);
+
+        const label = landing.is_wild ? "🍩 WILD BOUNCE!" : "🍩 DONUT TOSS!";
+        spawn_floating_text(state.donut_x, state.donut_y - 14, label, "#ff4081");
       }
     }
   }
 
-  // A donut must land on reachable floor.  Previously it could be thrown into a
-  // wall, then lure a guard through that wall and create an unfair blockade.
-  function find_donut_landing(dx, dy) {
-    const distance = Math.hypot(dx, dy);
-    if (distance === 0) return null;
-    const ux = dx / distance;
-    const uy = dy / distance;
+  // A donut is tossed in an unpredictable, random direction and must land on reachable floor.
+  // Because the trajectory is randomized, it may bounce forward, sideways, or behind the player,
+  // potentially luring aliens straight toward the player to create emergent difficulty!
+  function find_donut_landing() {
+    const angles = [];
+    const NUM_ANGLES = 16;
+    const start_offset = Math.random() * Math.PI * 2;
+    for (let i = 0; i < NUM_ANGLES; i++) {
+      angles.push(start_offset + (i * Math.PI * 2 / NUM_ANGLES));
+    }
+    // Shuffle angles for true unpredictability
+    for (let i = angles.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [angles[i], angles[j]] = [angles[j], angles[i]];
+    }
 
-    for (let step = 1.5; step >= 0.5; step -= 0.5) {
-      const x = (Math.floor((state.player_x + ux * TILE * step) / TILE) * TILE) + TILE / 2;
-      const y = (Math.floor((state.player_y + uy * TILE * step) / TILE) * TILE) + TILE / 2;
-      if (!can_stand(x, y)) continue;
+    for (const angle of angles) {
+      const dist = (1.2 + Math.random() * 1.0) * TILE;
+      const ux = Math.cos(angle);
+      const uy = Math.sin(angle);
 
-      let clear = true;
-      for (let t = 0.2; t <= 1; t += 0.2) {
-        if (!can_stand(state.player_x + (x - state.player_x) * t, state.player_y + (y - state.player_y) * t)) {
-          clear = false;
-          break;
+      for (let step = dist; step >= TILE * 0.8; step -= 10) {
+        const tx = Math.floor((state.player_x + ux * step) / TILE) * TILE + TILE / 2;
+        const ty = Math.floor((state.player_y + uy * step) / TILE) * TILE + TILE / 2;
+        if (!can_stand(tx, ty)) continue;
+
+        let clear = true;
+        for (let t = 0.25; t <= 1; t += 0.25) {
+          if (!can_stand(state.player_x + (tx - state.player_x) * t, state.player_y + (ty - state.player_y) * t)) {
+            clear = false;
+            break;
+          }
+        }
+        if (clear) {
+          return { x: tx, y: ty, is_wild: true };
         }
       }
-      if (clear) return { x, y };
+    }
+
+    // Fallback: check adjacent open floor tiles
+    const adj = [
+      { dx: TILE, dy: 0 }, { dx: -TILE, dy: 0 },
+      { dx: 0, dy: TILE }, { dx: 0, dy: -TILE }
+    ].sort(() => Math.random() - 0.5);
+    for (const d of adj) {
+      const fx = Math.floor((state.player_x + d.dx) / TILE) * TILE + TILE / 2;
+      const fy = Math.floor((state.player_y + d.dy) / TILE) * TILE + TILE / 2;
+      if (can_stand(fx, fy)) {
+        return { x: fx, y: fy, is_wild: false };
+      }
     }
     return null;
   }
@@ -847,7 +909,7 @@
       state.gate_open = plate_on; // Laser gate stays open while pressed
     }
 
-    // 5. UPDATE ALIENS (Clean, Predictable, Arcade-Quality Movement)
+    // 5. UPDATE ALIENS (Clean, Predictable, Arcade-Quality Movement with Line-of-Sight Awareness)
     state.aliens.forEach(a => {
       a.phase += dt * 9;
 
@@ -859,36 +921,131 @@
         const cur_spd = (state.has_key || state.lever_pulled || state.terminals_hacked > 0) 
           ? (a.base_spd * 1.2) 
           : a.base_spd;
-        a.alert = state.has_key || state.lever_pulled || (state.terminals_hacked > 0);
+        const global_alarm = state.has_key || state.lever_pulled || (state.terminals_hacked > 0);
 
-        // Lured by Donut
+        // A. Lured by Donut (sweet scent overrides normal patrol!)
+        let lured_by_donut = false;
         if (state.donut_timer > 0) {
           const dist_to_donut = Math.hypot(a.x - state.donut_x, a.y - state.donut_y);
-          if (dist_to_donut < 160) {
+          if (dist_to_donut < 180) {
+            lured_by_donut = true;
+            a.alert = false;
+            a.chasing = false;
             const angle = Math.atan2(state.donut_y - a.y, state.donut_x - a.x);
             a.vx = Math.cos(angle);
             a.vy = Math.sin(angle);
-            const nextX = a.x + a.vx * cur_spd * 0.7 * dt;
-            const nextY = a.y + a.vy * cur_spd * 0.7 * dt;
+            if (a.axis === 'x') a.dir = Math.sign(a.vx) || 1;
+            else a.dir = Math.sign(a.vy) || 1;
+            const nextX = a.x + a.vx * cur_spd * 0.85 * dt;
+            const nextY = a.y + a.vy * cur_spd * 0.85 * dt;
             if (can_stand(nextX, a.y)) a.x = nextX;
             if (can_stand(a.x, nextY)) a.y = nextY;
           }
-        } else {
-          // NORMAL PATROL MODE along designated corridor axis (Clean & Predictable)
-          if (a.axis === 'x') {
-            a.vx = a.dir;
-            a.vy = 0;
-            a.x += a.dir * cur_spd * dt;
-            const current_c = a.x / TILE;
-            if (a.dir > 0 && current_c >= a.max) a.dir = -1;
-            else if (a.dir < 0 && current_c <= a.min) a.dir = 1;
+        }
+
+        if (!lured_by_donut) {
+          // B. Line-of-sight Player Detection
+          const dist_to_player = Math.hypot(a.x - state.player_x, a.y - state.player_y);
+          let sees_player = false;
+
+          // Proximity detection: if player is within 34px in open view, alien notices immediately
+          if (dist_to_player < 34 && has_line_of_sight(a.x, a.y, state.player_x, state.player_y)) {
+            sees_player = true;
+          } else if (dist_to_player < 185) {
+            // Corridor alignment & facing direction check
+            if (a.axis === 'x') {
+              const facing = (a.dir > 0 && state.player_x >= a.x - 14) ||
+                             (a.dir < 0 && state.player_x <= a.x + 14);
+              const in_corridor = Math.abs(state.player_y - a.y) < TILE * 0.85;
+              if (facing && in_corridor && has_line_of_sight(a.x, a.y, state.player_x, state.player_y)) {
+                sees_player = true;
+              }
+            } else {
+              const facing = (a.dir > 0 && state.player_y >= a.y - 14) ||
+                             (a.dir < 0 && state.player_y <= a.y + 14);
+              const in_corridor = Math.abs(state.player_x - a.x) < TILE * 0.85;
+              if (facing && in_corridor && has_line_of_sight(a.x, a.y, state.player_x, state.player_y)) {
+                sees_player = true;
+              }
+            }
+          }
+
+          if (sees_player) {
+            if (!a.chasing) {
+              a.chasing = true;
+              audio.play_alert();
+              spawn_floating_text(a.x, a.y - 22, "❗️ SPOTTED!", "#ff1744");
+            }
+            a.lost_sight_t = 0;
+            a.alert = true;
+
+            // Charge along corridor directly toward player!
+            const chase_spd = a.base_spd * 1.35;
+            if (a.axis === 'x') {
+              const to_p = Math.sign(state.player_x - a.x);
+              if (to_p !== 0) a.dir = to_p;
+              a.vx = a.dir;
+              a.vy = 0;
+              const nextX = a.x + a.dir * chase_spd * dt;
+              if (can_stand(nextX, a.y)) a.x = nextX;
+            } else {
+              const to_p = Math.sign(state.player_y - a.y);
+              if (to_p !== 0) a.dir = to_p;
+              a.vx = 0;
+              a.vy = a.dir;
+              const nextY = a.y + a.dir * chase_spd * dt;
+              if (can_stand(a.x, nextY)) a.y = nextY;
+            }
+          } else if (a.chasing) {
+            // Player broke line of sight (e.g. turned corner): search briefly then return to patrol
+            a.lost_sight_t += dt;
+            if (a.lost_sight_t > 1.2) {
+              a.chasing = false;
+              a.alert = global_alarm;
+              spawn_floating_text(a.x, a.y - 18, "❓", "#ffb300");
+            } else {
+              // Continue forward along corridor during brief search window
+              const chase_spd = a.base_spd * 1.1;
+              if (a.axis === 'x') {
+                const nextX = a.x + a.dir * chase_spd * dt;
+                if (can_stand(nextX, a.y)) a.x = nextX;
+                else a.dir = -a.dir;
+              } else {
+                const nextY = a.y + a.dir * chase_spd * dt;
+                if (can_stand(a.x, nextY)) a.y = nextY;
+                else a.dir = -a.dir;
+              }
+            }
           } else {
-            a.vx = 0;
-            a.vy = a.dir;
-            a.y += a.dir * cur_spd * dt;
-            const current_r = a.y / TILE;
-            if (a.dir > 0 && current_r >= a.max) a.dir = -1;
-            else if (a.dir < 0 && current_r <= a.min) a.dir = 1;
+            // C. Normal Patrol Mode along designated corridor
+            a.alert = global_alarm;
+            if (a.axis === 'x') {
+              const cur_c = a.x / TILE;
+              // Return to patrol bounds if drifted
+              if (cur_c < a.min) a.dir = 1;
+              else if (cur_c > a.max) a.dir = -1;
+              else if (a.dir > 0 && cur_c >= a.max) a.dir = -1;
+              else if (a.dir < 0 && cur_c <= a.min) a.dir = 1;
+
+              a.vx = a.dir;
+              a.vy = 0;
+              const nextX = a.x + a.dir * cur_spd * dt;
+              if (can_stand(nextX, a.y)) a.x = nextX;
+              else a.dir = -a.dir;
+            } else {
+              const cur_r = a.y / TILE;
+              // Return to patrol bounds if drifted
+              if (cur_r < a.min) a.dir = 1;
+              else if (cur_r > a.max) a.dir = -1;
+              else if (a.dir > 0 && cur_r >= a.max) a.dir = -1;
+              else if (a.dir < 0 && cur_r <= a.min) a.dir = 1;
+
+              a.vx = 0;
+              a.vy = a.dir;
+              const nextY = a.y + a.dir * cur_spd * dt;
+              if (can_stand(a.x, nextY)) a.y = nextY;
+              else a.dir = -a.dir;
+            }
           }
         }
       }
@@ -944,6 +1101,9 @@
       a.x = a.home_c * TILE + TILE / 2;
       a.y = a.home_r * TILE + TILE / 2;
       a.alert = false;
+      a.chasing = false;
+      a.lost_sight_t = 0;
+      a.dir = (a.home_dir !== undefined) ? a.home_dir : 1;
       a.vx = (a.axis === 'x') ? a.dir : 0;
       a.vy = (a.axis === 'y') ? a.dir : 0;
     });
