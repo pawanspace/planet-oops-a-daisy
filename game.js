@@ -345,13 +345,14 @@
         "W.WWWWW.WWW.WWW.WW",
         "W.W.....W...W...WW",
         "W.W.WWWWW.W.WWW.WW",
-        "W...W.....W.....WW",
+        "WWW.W.....W.....WW",
         "WK...............W",
         "WWWWWWWWWWWWWWWWWW"
       ],
       aliens: [
-        // Guard 1: tightly blockades the Keycard alcove entrance at (1,10) — impossible to sneak past without donut!
-        { c: 2, r: 10, dir: -1, axis: 'x', min: 1.8, max: 3.2, spd: 60 },
+        // Guard 1: Keycard pocket is (1,10)-(2,10), sealed above by walls at (1,9),(2,9).
+        // Only entrance: doorway (3,9) -> junction (3,10). Guard sweeps cols 1..3 under the doorway.
+        { c: 2, r: 10, dir: -1, axis: 'x', min: 1.5, max: 3.5, spd: 60 },
         // Guard 2: patrols row 7 cols 9 to 11 — guards the mid-level crossing
         { c: 10, r: 7, dir: 1, axis: 'x', min: 9, max: 11, spd: 65 },
         // Guard 3: patrols row 1 cols 11 to 14 — guards the approach to Gate at (16,1)
@@ -661,6 +662,7 @@
       sugar_rush_t: 0,
       is_eating: false,
       eat_t: 0,
+      returning: false,
       palette_id: i % 5
     }));
 
@@ -770,16 +772,8 @@
         // Burst of sweet pastry crumbs at landing point
         spawn_burst(landing.x, landing.y, 14, 1);
 
-        // Target ONLY the single closest alien within smelling range (~185px)
-        let closest_idx = -1;
-        let closest_dist = 185;
-        state.aliens.forEach((a, idx) => {
-          const d = Math.hypot(a.x - landing.x, a.y - landing.y);
-          if (d < closest_dist) {
-            closest_dist = d;
-            closest_idx = idx;
-          }
-        });
+        // The landing logic already picked which alien goes for it (by walking distance)
+        const closest_idx = (landing.eater !== undefined) ? landing.eater : -1;
         state.donut_eater_index = closest_idx;
         if (closest_idx >= 0) {
           spawn_floating_text(state.aliens[closest_idx].x, state.aliens[closest_idx].y - 24, "🍩 SMELLS DONUT!", "#ff4081");
@@ -791,56 +785,125 @@
     }
   }
 
-  // A donut is tossed in an unpredictable, random direction and must land on reachable floor.
-  // Because the trajectory is randomized, it may bounce forward, sideways, or behind the player,
-  // potentially luring aliens straight toward the player to create emergent difficulty!
+  // Breadth-first walking distance (in tiles) from (sc, sr) over open floor.
+  // `blocked` is an optional {c, r} tile treated as a wall (used to stop paths going through the player).
+  function bfs_dist(sc, sr, blocked) {
+    const dist = [];
+    for (let r = 0; r < ROWS; r++) dist.push(new Array(COLS).fill(Infinity));
+    if (is_wall(sc, sr)) return dist;
+    dist[sr][sc] = 0;
+    const q = [[sc, sr]];
+    for (let h = 0; h < q.length; h++) {
+      const [c, r] = q[h];
+      for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nc = c + dc, nr = r + dr;
+        if (is_wall(nc, nr)) continue;
+        if (blocked && nc === blocked.c && nr === blocked.r) continue;
+        if (dist[nr][nc] !== Infinity) continue;
+        dist[nr][nc] = dist[r][c] + 1;
+        q.push([nc, nr]);
+      }
+    }
+    return dist;
+  }
+
+  // Next tile to step onto when walking from (sc, sr) to (gc, gr), or null if unreachable.
+  function next_step_toward(sc, sr, gc, gr) {
+    if (sc === gc && sr === gr) return { c: gc, r: gr };
+    const d = bfs_dist(gc, gr, null); // distance field from the goal
+    let best = null;
+    for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nc = sc + dc, nr = sr + dr;
+      if (is_wall(nc, nr)) continue;
+      if (d[nr][nc] < d[sr][sc] && (!best || d[nr][nc] < d[best.r][best.c])) best = { c: nc, r: nr };
+    }
+    return best;
+  }
+
+  // Walk an alien along the tile grid toward (gc, gr). Returns true once standing on the goal tile center.
+  function walk_alien_toward(a, gc, gr, spd, dt) {
+    const cc = Math.floor(a.x / TILE), cr = Math.floor(a.y / TILE);
+    const nxt = next_step_toward(cc, cr, gc, gr);
+    if (!nxt) return false;
+    const cx = cc * TILE + TILE / 2, cy = cr * TILE + TILE / 2;
+    let tx = nxt.c * TILE + TILE / 2, ty = nxt.r * TILE + TILE / 2;
+    // Stay on the corridor center-line: align the perpendicular axis first so we never cut corners.
+    if (nxt.c !== cc && Math.abs(a.y - cy) > 1) { tx = a.x; ty = cy; }
+    else if (nxt.r !== cr && Math.abs(a.x - cx) > 1) { tx = cx; ty = a.y; }
+    const dx = tx - a.x, dy = ty - a.y;
+    const len = Math.hypot(dx, dy);
+    const step = spd * dt;
+    if (len <= step) { a.x = tx; a.y = ty; }
+    else { a.x += dx / len * step; a.y += dy / len * step; }
+    if (len > 0.001) {
+      a.vx = dx / (len || 1);
+      a.vy = dy / (len || 1);
+      if (a.axis === 'x' && Math.abs(dx) > 0.01) a.dir = Math.sign(dx);
+      if (a.axis === 'y' && Math.abs(dy) > 0.01) a.dir = Math.sign(dy);
+    }
+    const gx = gc * TILE + TILE / 2, gy = gr * TILE + TILE / 2;
+    return Math.hypot(a.x - gx, a.y - gy) < 1;
+  }
+
+  const DONUT_THROW_STEPS = 3;     // donut lands this many walking steps from the player
+  const DONUT_MAX_ALIEN_STEPS = 7; // aliens further than this (walking) ignore the donut
+  const DONUT_EAT_TIME = 0.8;      // seconds the alien is busy eating (tune difficulty here)
+
+  // Donut landing rule (deterministic, based on walking distance — not straight-line raycasts):
+  //  1. The target alien is the one closest to the player by walking distance (<= 7 steps).
+  //  2. Candidate tiles are exactly 3 walking steps from the player (falls back to 2, then 4).
+  //  3. The alien must be able to reach the tile WITHOUT walking through the player's tile.
+  //  4. Pick the candidate farthest (walking) from the alien's guard post, so it is pulled away from what it guards.
   function find_donut_landing() {
-    const angles = [];
-    const NUM_ANGLES = 16;
-    const start_offset = Math.random() * Math.PI * 2;
-    for (let i = 0; i < NUM_ANGLES; i++) {
-      angles.push(start_offset + (i * Math.PI * 2 / NUM_ANGLES));
-    }
-    // Shuffle angles for true unpredictability
-    for (let i = angles.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [angles[i], angles[j]] = [angles[j], angles[i]];
-    }
+    const pc = Math.floor(state.player_x / TILE), pr = Math.floor(state.player_y / TILE);
+    const player_tile = { c: pc, r: pr };
+    const dist_p = bfs_dist(pc, pr, null);
 
-    for (const angle of angles) {
-      const dist = (1.2 + Math.random() * 1.0) * TILE;
-      const ux = Math.cos(angle);
-      const uy = Math.sin(angle);
+    // 1. Target alien by walking distance from the player
+    let eater = -1, eater_d = Infinity;
+    state.aliens.forEach((a, idx) => {
+      const ac = Math.floor(a.x / TILE), ar = Math.floor(a.y / TILE);
+      const d = dist_p[ar] ? dist_p[ar][ac] : Infinity;
+      if (d <= DONUT_MAX_ALIEN_STEPS && d < eater_d) { eater_d = d; eater = idx; }
+    });
 
-      for (let step = dist; step >= TILE * 0.8; step -= 10) {
-        const tx = Math.floor((state.player_x + ux * step) / TILE) * TILE + TILE / 2;
-        const ty = Math.floor((state.player_y + uy * step) / TILE) * TILE + TILE / 2;
-        if (!can_stand(tx, ty)) continue;
+    const face_vec = [[0, -1], [1, 0], [0, 1], [-1, 0]][state.face_dir] || [1, 0];
+    const tiles_at = (n) => {
+      const out = [];
+      for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (dist_p[r][c] === n) out.push({ c, r });
+      return out;
+    };
+    const to_landing = (t, eater_idx) => ({
+      x: t.c * TILE + TILE / 2, y: t.r * TILE + TILE / 2, c: t.c, r: t.r, eater: eater_idx, is_wild: false
+    });
 
-        let clear = true;
-        for (let t = 0.25; t <= 1; t += 0.25) {
-          if (!can_stand(state.player_x + (tx - state.player_x) * t, state.player_y + (ty - state.player_y) * t)) {
-            clear = false;
-            break;
-          }
+    if (eater >= 0) {
+      const a = state.aliens[eater];
+      const ac = Math.floor(a.x / TILE), ar = Math.floor(a.y / TILE);
+      const dist_a = bfs_dist(ac, ar, player_tile);          // alien walking dist, not through player
+      const dist_h = bfs_dist(a.home_c, a.home_r, player_tile); // dist from its guard post
+      for (const n of [DONUT_THROW_STEPS, DONUT_THROW_STEPS - 1, DONUT_THROW_STEPS + 1]) {
+        let best = null, best_score = -Infinity;
+        for (const t of tiles_at(n)) {
+          if (dist_a[t.r][t.c] > DONUT_MAX_ALIEN_STEPS) continue; // includes unreachable (Infinity)
+          const home_steps = dist_h[t.r][t.c];
+          if (!isFinite(home_steps)) continue;
+          const home_euclid = Math.hypot(t.c - a.home_c, t.r - a.home_r);
+          const score = home_steps * 100 + home_euclid;
+          if (score > best_score) { best_score = score; best = t; }
         }
-        if (clear) {
-          return { x: tx, y: ty, is_wild: true };
-        }
+        if (best) return to_landing(best, eater);
       }
     }
 
-    // Fallback: check adjacent open floor tiles
-    const adj = [
-      { dx: TILE, dy: 0 }, { dx: -TILE, dy: 0 },
-      { dx: 0, dy: TILE }, { dx: 0, dy: -TILE }
-    ].sort(() => Math.random() - 0.5);
-    for (const d of adj) {
-      const fx = Math.floor((state.player_x + d.dx) / TILE) * TILE + TILE / 2;
-      const fy = Math.floor((state.player_y + d.dy) / TILE) * TILE + TILE / 2;
-      if (can_stand(fx, fy)) {
-        return { x: fx, y: fy, is_wild: false };
+    // No alien nearby (or none can reach without going through you): land 3 steps away, favoring facing direction
+    for (const n of [DONUT_THROW_STEPS, DONUT_THROW_STEPS - 1, 1]) {
+      let best = null, best_dot = -Infinity;
+      for (const t of tiles_at(n)) {
+        const dot = (t.c - pc) * face_vec[0] + (t.r - pr) * face_vec[1];
+        if (dot > best_dot) { best_dot = dot; best = t; }
       }
+      if (best) return to_landing(best, -1);
     }
     return null;
   }
@@ -980,7 +1043,8 @@
         a.vy = 0;
         if (a.eat_t <= 0) {
           a.is_eating = false;
-          a.sugar_rush_t = 6.0; // 6 seconds of DOUBLE SPEED!
+          a.sugar_rush_t = 6.0; // DOUBLE SPEED until it gets back to its post (or 6s run out)
+          a.returning = true;   // sprint straight back to the guard post to check on the key
           audio.play_pickup();
           spawn_floating_text(a.x, a.y - 24, "⚡️ SUGAR RUSH! 2x SPEED!", "#ffd600");
           spawn_burst(a.x, a.y, 18, 0);
@@ -1002,24 +1066,16 @@
             state.donut_timer = 0; // Donut is eaten off the ground!
             state.donut_eater_index = -1;
             a.is_eating = true;
-            a.eat_t = 1.2; // 1.2 seconds of chewing
+            a.eat_t = DONUT_EAT_TIME;
             spawn_floating_text(a.x, a.y - 20, "🍩 NOM NOM NOM!", "#ff4081");
             spawn_burst(a.x, a.y, 12, 1);
             lured_by_donut = true;
           } else {
-            // Walking toward donut
+            // Walking toward donut along the corridors (never cuts through walls / corners)
             lured_by_donut = true;
             a.alert = false;
             a.chasing = false;
-            const angle = Math.atan2(state.donut_y - a.y, state.donut_x - a.x);
-            a.vx = Math.cos(angle);
-            a.vy = Math.sin(angle);
-            if (a.axis === 'x') a.dir = Math.sign(a.vx) || 1;
-            else a.dir = Math.sign(a.vy) || 1;
-            const nextX = a.x + a.vx * a.base_spd * 0.9 * dt;
-            const nextY = a.y + a.vy * a.base_spd * 0.9 * dt;
-            if (can_stand(nextX, a.y)) a.x = nextX;
-            if (can_stand(a.x, nextY)) a.y = nextY;
+            walk_alien_toward(a, Math.floor(state.donut_x / TILE), Math.floor(state.donut_y / TILE), a.base_spd * 0.9, dt);
           }
         }
 
@@ -1082,6 +1138,7 @@
             if (a.lost_sight_t > 1.2) {
               a.chasing = false;
               a.alert = global_alarm;
+              a.returning = true; // nobody here — go back and guard the post
               spawn_floating_text(a.x, a.y - 18, "❓", "#ffb300");
             } else {
               // Continue forward along corridor during brief search window
@@ -1096,11 +1153,20 @@
                 else a.dir = -a.dir;
               }
             }
+          } else if (a.returning) {
+            // C1. Return to guard post (at 2x speed while in Sugar Rush). Line-of-sight checks above
+            //     still run every frame, so if it spots the player on the way it switches to chasing.
+            a.alert = global_alarm;
+            if (walk_alien_toward(a, a.home_c, a.home_r, cur_spd, dt)) {
+              a.returning = false;
+              a.sugar_rush_t = 0; // post checked: rush over, back to normal patrol
+              a.dir = (a.home_dir !== undefined) ? a.home_dir : 1;
+            }
           } else {
-            // C. Corridor Movement (Sugar Rush Open Roam vs Normal Patrol)
+            // C2. Normal Corridor Patrol
             a.alert = global_alarm;
 
-            // Realign smoothly back to home corridor lane if displaced by donut
+            // Realign smoothly back to home corridor lane if displaced
             if (a.axis === 'x') {
               const home_y = a.home_r * TILE + TILE / 2;
               if (Math.abs(a.y - home_y) > 1.5) {
@@ -1112,7 +1178,7 @@
               const home_x = a.home_c * TILE + TILE / 2;
               if (Math.abs(a.x - home_x) > 1.5) {
                 const step = Math.sign(home_x - a.x) * cur_spd * dt;
-                if (can_stand(a.x + step, a.y)) a.x = step;
+                if (can_stand(a.x + step, a.y)) a.x += step;
                 else if (can_stand(home_x, a.y)) a.x = home_x;
               }
             }
@@ -1227,6 +1293,7 @@
       a.sugar_rush_t = 0;
       a.is_eating = false;
       a.eat_t = 0;
+      a.returning = false;
       a.dir = (a.home_dir !== undefined) ? a.home_dir : 1;
       a.vx = (a.axis === 'x') ? a.dir : 0;
       a.vy = (a.axis === 'y') ? a.dir : 0;
@@ -2761,4 +2828,9 @@
     load_level(0);
     requestAnimationFrame(game_loop);
   });
+
+  // Test hook: lets headless tests drive the REAL game logic (no-op in the browser).
+  if (typeof window !== "undefined" && window.__OOPS_TEST__) {
+    window.__OOPS_TEST__ = { state, input, MAZE_TEMPLATES, TILE, load_level, sim_update, use_gadget, find_donut_landing, bfs_dist };
+  }
 })();
