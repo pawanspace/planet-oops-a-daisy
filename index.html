@@ -1,174 +1,42 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Planet Oops-a-Daisy: The Confused Alien Crossing</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Oops-a-Daisy" />
+  <meta name="theme-color" content="#2a1f45" />
+  <title>Planet Oops-a-Daisy</title>
 </head>
 <body>
-  <div id="game-wrapper">
-    <!-- Top HUD -->
-    <header id="hud">
-      <div class="hud-group">
-        <span class="hud-badge" id="hud-level">Lvl 1</span>
-        <div class="hud-item">
-          <span>TIME:</span>
-          <span class="hud-badge" id="hud-timer">01:30</span>
-        </div>
-        <div class="hud-item">
-          <span>SCORE:</span>
-          <span class="hud-badge" id="hud-score">0</span>
-        </div>
-      </div>
+  <div id="game"></div>
 
-      <div class="hud-group">
-        <div class="hud-item">
-          <span>HEARTS:</span>
-          <div id="hearts-container">
-            <span class="heart-icon">❤️</span>
-            <span class="heart-icon">❤️</span>
-            <span class="heart-icon">❤️</span>
-          </div>
-        </div>
-        <button id="editor-toggle" class="hud-btn hud-btn-editor" aria-label="Toggle Level Editor">🛠️ LEVEL EDITOR</button>
-        <button id="music-toggle" class="hud-btn" aria-label="Toggle Music">🎵 MUSIC</button>
-        <button id="sfx-toggle" class="hud-btn" aria-label="Toggle SFX">🔊 SFX</button>
-      </div>
-    </header>
+  <div id="hud">
+    <div class="hud-left">
+      <span id="hud-level"></span>
+      <span id="hud-hearts"></span>
+    </div>
+    <div class="hud-right">
+      <span id="hud-items"></span>
+      <span id="hud-time">0:00</span>
+      <button id="btn-music" title="Music">🎵</button>
+      <button id="btn-pause" title="Pause (P)">⏸</button>
+    </div>
+  </div>
+  <div id="hint"></div>
 
-    <!-- Background Music Audio Element -->
-    <audio id="bgm" src="music.mp3" loop preload="auto"></audio>
-
-    <!-- Canvas Area -->
-    <main id="canvas-container">
-      <!-- Interactive Level Designer Toolbar (Revealed in Editor Mode) -->
-      <div id="editor-panel" class="editor-bar hidden">
-        <div class="editor-row">
-          <div class="editor-group">
-            <span class="editor-label">BRUSH:</span>
-            <button class="editor-tool-btn active" data-tool="wall" title="Wall (W)">🧱 Wall</button>
-            <button class="editor-tool-btn" data-tool="floor" title="Floor (.)">⬜ Floor</button>
-            <button class="editor-tool-btn" data-tool="key" title="Keycard (K)">🗝️ Key</button>
-            <button class="editor-tool-btn" data-tool="gate" title="Gate (G)">🚪 Gate</button>
-            <button class="editor-tool-btn" data-tool="item" title="Quest Item (I)">⭐ Goal</button>
-            <button class="editor-tool-btn" data-tool="start" title="Player Start">🚀 Start</button>
-            <button class="editor-tool-btn" data-tool="alien" title="Add New Alien">👽 +Alien</button>
-            <button class="editor-tool-btn" data-tool="select" title="Select / Move Alien">🖐️ Inspect</button>
-          </div>
-
-          <div class="editor-group editor-actions">
-            <button class="editor-btn btn-success" id="btn-test-play" title="Playtest this level right now!">▶️ TEST PLAY</button>
-            <button class="editor-btn btn-primary" id="btn-save-level" title="Save level so it loads automatically!">💾 SAVE</button>
-            <button class="editor-btn" id="btn-export-json" title="View & Copy Level JSON">📋 JSON</button>
-            <button class="editor-btn" id="btn-reset-level" title="Reset to original maze">🔄 RESET</button>
-            <button class="editor-btn btn-close" id="btn-exit-editor" title="Close Editor">✖️</button>
-          </div>
-        </div>
-
-        <!-- Alien Inspector Bar (Visible when an alien is selected) -->
-        <div class="editor-row alien-inspector-row" id="alien-controls-panel" style="display: none;">
-          <span class="editor-label" id="selected-alien-label">👽 ALIEN #1:</span>
-          <button class="editor-btn" id="btn-axis-toggle" title="Toggle Horizontal / Vertical Patrol">Axis: ↔️ X</button>
-          <div class="editor-stepper">
-            <span>Min:</span>
-            <button class="editor-btn-sm" id="btn-min-dec">-</button>
-            <span id="val-min" class="val-badge">2</span>
-            <button class="editor-btn-sm" id="btn-min-inc">+</button>
-          </div>
-          <div class="editor-stepper">
-            <span>Max:</span>
-            <button class="editor-btn-sm" id="btn-max-dec">-</button>
-            <span id="val-max" class="val-badge">6</span>
-            <button class="editor-btn-sm" id="btn-max-inc">+</button>
-          </div>
-          <button class="editor-btn" id="btn-speed-toggle">Speed: 60</button>
-          <button class="editor-btn btn-danger" id="btn-del-alien">🗑️ Delete</button>
-        </div>
-      </div>
-
-      <canvas id="game-canvas"></canvas>
-
-      <!-- Level Export / Import Modal -->
-      <div id="json-modal" class="json-modal-overlay hidden">
-        <div class="json-modal-card">
-          <div class="json-modal-header">
-            <h3>📋 LEVEL DATA (JSON)</h3>
-            <button class="json-close-btn" id="btn-close-json">✖</button>
-          </div>
-          <p>Copy this JSON to keep permanently or paste your own JSON to import:</p>
-          <textarea id="json-textarea" spellcheck="false"></textarea>
-          <div class="json-modal-actions">
-            <button class="editor-btn btn-primary" id="btn-copy-json">📋 COPY TO CLIPBOARD</button>
-            <button class="editor-btn btn-success" id="btn-apply-json">📥 APPLY JSON TO LEVEL</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Modal Overlays (Title, Win, Game Over) -->
-      <div id="modal-overlay" class="overlay-screen">
-        <h1 id="modal-title">🚀 PLANET OOPS-A-DAISY</h1>
-        <h2 id="modal-subtitle">The Alien Maze Adventure</h2>
-        <p id="modal-desc">
-          Navigate winding corridors, solve unique alien puzzles, dodge backwards-walking guards, and escape before the countdown timer expires!
-        </p>
-
-        <!-- Mode Selector -->
-        <div id="diff-selector" class="diff-row">
-          <button type="button" class="diff-btn" data-diff="EASY">🟢 EASY<br><small>3 mins · 5 Hearts</small></button>
-          <button type="button" class="diff-btn active" data-diff="MEDIUM">🟡 MEDIUM<br><small>90 sec · 3 Hearts</small></button>
-          <button type="button" class="diff-btn" data-diff="HARD">🔴 HARD<br><small>50 sec · 2 Hearts</small></button>
-        </div>
-
-        <div class="controls-hint">
-          <div>🕹️ <b>Move:</b> Arrow Keys / WASD</div>
-          <div>🎺 <b>Honk (Freeze 3s):</b> 1 / Space</div>
-          <div>👟 <b>Moonwalk (Phase / Conveyors):</b> 2 / Shift</div>
-          <div>🍩 <b>Donut (Lure / Pressure Plates):</b> 3 / E</div>
-        </div>
-
-        <button id="modal-btn" class="play-button">START MAZE ADVENTURE</button>
-      </div>
-    </main>
-
-    <!-- AI Story / Dialogue Prompt Bar -->
-    <footer id="dialogue-banner">
-      <div id="ai-icon">🤖</div>
-      <div id="ai-message">
-        NAV-9000: "Autopilot recalibration complete! Welcome to Planet Oops-a-Daisy. Mind the reverse knees."
-      </div>
-    </footer>
-
-    <!-- iPad & Mobile Touch Controls Bar -->
-    <nav id="touch-controls" aria-label="Touch Controls">
-      <!-- Virtual 4-Way D-Pad (Left Thumb) -->
-      <div class="dpad-grid">
-        <button id="t-up" class="t-btn dp-up" aria-label="Up">⬆️</button>
-        <button id="t-left" class="t-btn dp-left" aria-label="Left">⬅️</button>
-        <button id="t-right" class="t-btn dp-right" aria-label="Right">➡️</button>
-        <button id="t-down" class="t-btn dp-down" aria-label="Down">⬇️</button>
-      </div>
-
-      <!-- Tourist Utility Gadgets (Right Thumb) -->
-      <div class="action-row">
-        <button id="t-honk" class="gadget-touch-btn gb-honk" aria-label="Honk">
-          🎺
-          <span>HONK</span>
-        </button>
-        <button id="t-moonwalk" class="gadget-touch-btn gb-moonwalk" aria-label="Moonwalk">
-          👟
-          <span>WALK</span>
-        </button>
-        <button id="t-donut" class="gadget-touch-btn gb-donut" aria-label="Donut">
-          🍩
-          <span>DONUT</span>
-        </button>
-      </div>
-    </nav>
+  <div id="touch">
+    <div id="stick"><div id="stick-knob"></div></div>
+    <div id="buttons">
+      <button id="btn-honk" class="gadget"><span>🎺</span><small>HONK</small></button>
+      <button id="btn-moon" class="gadget"><span>👟</span><small>MOON</small></button>
+      <button id="btn-donut" class="gadget"><span>🍩</span><small>DONUT</small></button>
+      <button id="btn-run" class="gadget run"><span>💨</span><small>RUN</small></button>
+    </div>
   </div>
 
-  <script src="game.js?v=donut_heist_v1"></script>
+  <div id="overlay" class="hidden"><div id="panel"></div></div>
+  <script type="module" src="/src/main.ts"></script>
 </body>
 </html>
