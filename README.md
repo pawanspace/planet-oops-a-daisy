@@ -8,6 +8,9 @@ See **[DESIGN.md](DESIGN.md)** for the rules, alien cast, level plan and tech no
 
 ## Play / develop
 
+Easiest: `./run_server.sh` builds the game, serves it on port 8000, opens it on this Mac and prints the address for the
+iPad. Use `./run_server.sh --dev` for a live-reloading dev server while changing things.
+
 ```bash
 npm install        # uses the public npm registry (see .npmrc)
 npm run dev        # http://localhost:8000, also on your Wi-Fi IP for the iPad
