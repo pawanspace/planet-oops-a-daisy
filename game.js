@@ -321,23 +321,25 @@
       start: { c: 1, r: 1 },
       grid: [
         "WWWWWWWWWWWWWWWWWW",
-        "W........W.......W",
-        "W.WWWW.W.W.WWWW.GW",
-        "W.W....W.W.W....IW",
-        "W.W.WW.W.W.W.WWWWW",
-        "W.W.WW...W.W.....W",
-        "W.W.WWWW...WWWWW.W",
-        "W.W..............W",
-        "W.WWWW.WWWWWWWW..W",
-        "W......W.........W",
-        "WKW.WW.W.WWWWWWWWW",
+        "W.......WW......GW",
+        "W.WWWW.WWW.WWWWWIW",
+        "W.W..W.....W....WW",
+        "W.WW.W.WWW.W.WWW.W",
+        "W....W...W...W...W",
+        "W.WWWWW.WWW.WWW.WW",
+        "W.W.....W...W...WW",
+        "W.W.WWWWW.W.WWW.WW",
+        "W...W.....W.....WW",
+        "WK...............W",
         "WWWWWWWWWWWWWWWWWW"
       ],
       aliens: [
-        { c: 5, r: 1, dir: 1, axis: 'x', min: 3, max: 7, spd: 60 },
-        { c: 4, r: 3, dir: 1, axis: 'x', min: 3, max: 6, spd: 60 },
-        { c: 16, r: 7, dir: 1, axis: 'y', min: 5, max: 8, spd: 60 },
-        { c: 4, r: 9, dir: 1, axis: 'x', min: 2, max: 5, spd: 60 }
+        // Guard 1: patrols the bottom corridor — player MUST cross row 10 to reach the gate
+        { c: 6, r: 10, dir: 1, axis: 'x', min: 3, max: 9, spd: 65 },
+        // Guard 2: patrols row 7 cols 9-11 — player MUST pass through (11,7) to ascend col 11
+        { c: 10, r: 7, dir: 1, axis: 'x', min: 9, max: 11, spd: 65 },
+        // Guard 3: patrols top-right corridor — player MUST pass row 1 to reach the gate
+        { c: 13, r: 1, dir: 1, axis: 'x', min: 12, max: 14, spd: 70 }
       ]
     },
 
@@ -356,7 +358,7 @@
         "W...W.WW.W.W...W.W",
         "W.W.W..W.W.W.W.WGW",
         "W.W....W...W.W.WIW",
-        "W.WWWWWWWW.W.W.WWW",
+        "WWWWWWWWWW.W.W.WWW",
         "W.CCCCCCCCCC.W...W",
         "W.W.WWWWWWWWWWWW.W",
         "W.W..............W",
@@ -366,8 +368,9 @@
       conveyor_dir: -1,
       aliens: [
         { c: 2, r: 2, dir: 1, axis: 'x', min: 1, max: 3, spd: 60 },
-        { c: 4, r: 5, dir: 1, axis: 'x', min: 3, max: 6, spd: 70 },
-        { c: 12, r: 3, dir: 1, axis: 'x', min: 11, max: 14, spd: 65 },
+        { c: 2, r: 10, dir: 1, axis: 'x', min: 1, max: 3, spd: 70 },
+        // Keep every patrol entirely inside its hallway.  Column 11 is a wall.
+        { c: 12, r: 3, dir: 1, axis: 'x', min: 12, max: 14, spd: 65 },
         { c: 9, r: 9, dir: 1, axis: 'x', min: 5, max: 14, spd: 80 },
         { c: 8, r: 3, dir: 1, axis: 'y', min: 1, max: 5, spd: 65 }
       ]
@@ -401,7 +404,7 @@
         { c: 8, r: 1, dir: 1, axis: 'x', min: 5, max: 12, spd: 80 },
         { c: 8, r: 3, dir: 1, axis: 'x', min: 7, max: 10, spd: 85 },
         { c: 2, r: 5, dir: 1, axis: 'x', min: 1, max: 4, spd: 75 },
-        { c: 16, r: 5, dir: 1, axis: 'y', min: 1, max: 8, spd: 85 },
+        { c: 16, r: 5, dir: 1, axis: 'y', min: 2, max: 5, spd: 85 },
         { c: 6, r: 9, dir: 1, axis: 'x', min: 5, max: 8, spd: 90 }
       ]
     },
@@ -420,11 +423,11 @@
         "W.W....W....W....W",
         "W...W......W.....W",
         "WWW.W.WWWW.W.WWW.W",
-        "W...W..E...W...W.W",
+        "W...W......W...W.W",
         "W.WWW.WWWW.WWW.W.W",
         "W...W......W...W.W",
         "WWW.W.WWWW.W.WWW.W",
-        "W...W....W.W...W.W",
+        "W...W....W.W...WGW",
         "WSW.WWWW.W...W.WIW",
         "WWWWWWWWWWWWWWWWWW"
       ],
@@ -436,10 +439,9 @@
       aliens: [
         { c: 4, r: 1, dir: 1, axis: 'x', min: 3, max: 6, spd: 85 },
         { c: 9, r: 1, dir: 1, axis: 'x', min: 8, max: 11, spd: 85 },
-        { c: 7, r: 3, dir: 1, axis: 'x', min: 5, max: 10, spd: 95 },
-        { c: 7, r: 7, dir: 1, axis: 'x', min: 5, max: 10, spd: 95 },
-        { c: 6, r: 9, dir: 1, axis: 'x', min: 5, max: 8, spd: 90 },
-        { c: 14, r: 7, dir: 1, axis: 'y', min: 5, max: 8, spd: 65 }
+        { c: 7, r: 3, dir: 1, axis: 'x', min: 6, max: 9, spd: 95 },
+        { c: 7, r: 7, dir: 1, axis: 'x', min: 6, max: 9, spd: 95 },
+        { c: 6, r: 9, dir: 1, axis: 'x', min: 5, max: 8, spd: 90 }
       ]
     }
   ];
@@ -482,6 +484,7 @@
     conveyor_active_dir: -1,
     plate_pressed: false,
     terminals_hacked: 0,
+    terminal_active: [],
 
     // Gadgets
     honk_cooldown: 0,
@@ -502,7 +505,10 @@
 
     // Particles & Floating Text
     particles: [],
-    floating_texts: []
+    floating_texts: [],
+
+    // Grid Editor Mode
+    show_grid: false
   };
 
   // ---------------------------------------------------------------------------
@@ -554,6 +560,9 @@
     state.lever_pulled = false;
     state.plate_pressed = false;
     state.terminals_hacked = 0;
+    // Terminal progress belongs to this attempt, never to the shared template.
+    // This prevents a retry from leaving a closed gate with unhackable terminals.
+    state.terminal_active = (tmpl.terminals || []).map(() => false);
     state.conveyor_active_dir = tmpl.conveyor_dir || -1;
 
     // Copy Maze Grid
@@ -623,9 +632,10 @@
         spawn_floating_text(c * TILE + TILE / 2, r * TILE, "🔄 CONVEYORS REVERSED!", "#00e5ff");
       } else if (state.level_index === 3) {
         const tmpl = MAZE_TEMPLATES[3];
-        const term = tmpl.terminals.find(t => t.c === c && t.r === r);
-        if (term && !term.active) {
-          term.active = true;
+        const termIndex = tmpl.terminals.findIndex(t => t.c === c && t.r === r);
+        const term = tmpl.terminals[termIndex];
+        if (term && !state.terminal_active[termIndex]) {
+          state.terminal_active[termIndex] = true;
           state.terminals_hacked++;
           audio.play_switch();
           spawn_floating_text(c * TILE + TILE / 2, r * TILE, `🖥️ TERMINAL ${term.label} HACKED! (${state.terminals_hacked}/3)`, "#00ffd5");
@@ -677,20 +687,51 @@
     } else if (num === 3) {
       // 🍩 Space Donut Toss (Lure aliens toward it)
       if (state.donut_cooldown <= 0) {
-        state.donut_cooldown = 7.0 * diff.cooldown_mult;
-        state.donut_timer = 4.0;
         let dx = 0, dy = 0;
         if (state.face_dir === 0) dy = -TILE * 1.5;
         else if (state.face_dir === 1) dx = TILE * 1.5;
         else if (state.face_dir === 2) dy = TILE * 1.5;
         else if (state.face_dir === 3) dx = -TILE * 1.5;
 
-        state.donut_x = Math.max(TILE, Math.min(WORLD_W - TILE, state.player_x + dx));
-        state.donut_y = Math.max(TILE, Math.min(WORLD_H - TILE, state.player_y + dy));
+        const landing = find_donut_landing(dx, dy);
+        if (!landing) {
+          spawn_floating_text(state.player_x, state.player_y - 20, "🍩 NO CLEAR LANDING SPOT", "#ff9100");
+          return;
+        }
+
+        state.donut_cooldown = 12.0 * diff.cooldown_mult;
+        state.donut_timer = 8.0;
+        state.donut_x = landing.x;
+        state.donut_y = landing.y;
         audio.play_donut();
         spawn_floating_text(state.donut_x, state.donut_y - 14, "🍩 DONUT TOSS!", "#ff4081");
       }
     }
+  }
+
+  // A donut must land on reachable floor.  Previously it could be thrown into a
+  // wall, then lure a guard through that wall and create an unfair blockade.
+  function find_donut_landing(dx, dy) {
+    const distance = Math.hypot(dx, dy);
+    if (distance === 0) return null;
+    const ux = dx / distance;
+    const uy = dy / distance;
+
+    for (let step = 1.5; step >= 0.5; step -= 0.5) {
+      const x = (Math.floor((state.player_x + ux * TILE * step) / TILE) * TILE) + TILE / 2;
+      const y = (Math.floor((state.player_y + uy * TILE * step) / TILE) * TILE) + TILE / 2;
+      if (!can_stand(x, y)) continue;
+
+      let clear = true;
+      for (let t = 0.2; t <= 1; t += 0.2) {
+        if (!can_stand(state.player_x + (x - state.player_x) * t, state.player_y + (y - state.player_y) * t)) {
+          clear = false;
+          break;
+        }
+      }
+      if (clear) return { x, y };
+    }
+    return null;
   }
 
   // ---------------------------------------------------------------------------
@@ -860,8 +901,12 @@
             const angle = Math.atan2(state.donut_y - a.y, state.donut_x - a.x);
             a.vx = Math.cos(angle);
             a.vy = Math.sin(angle);
-            a.x += a.vx * cur_spd * 0.7 * dt;
-            a.y += a.vy * cur_spd * 0.7 * dt;
+            const nextX = a.x + a.vx * cur_spd * 0.7 * dt;
+            const nextY = a.y + a.vy * cur_spd * 0.7 * dt;
+            // Lured guards may only follow a donut through walkable space.
+            // Moving the axes independently preserves the game's wall sliding.
+            if (can_stand(nextX, a.y)) a.x = nextX;
+            if (can_stand(a.x, nextY)) a.y = nextY;
           }
         } else if (a.alert) {
           // ALERT HUNT MODE: Can move in all 4 directions toward the player!
@@ -923,7 +968,9 @@
       // Collision with Player (Backwards Knees Bonk!)
       // Evaluated on alien's current real-time coordinates
       const current_dist = Math.hypot(a.x - state.player_x, a.y - state.player_y);
-      if (state.moonwalk_timer <= 0 && state.invincible_t <= 0) {
+      // A honked alien is confused, not an invisible damage trap.  This gives
+      // the player a dependable escape route when a narrow corridor gets busy.
+      if (a.frozen_t <= 0 && state.moonwalk_timer <= 0 && state.invincible_t <= 0) {
         if (current_dist < 28) {
           on_player_bonked();
         }
@@ -1023,6 +1070,8 @@
   let view_scale = 1.0;
   let view_offset_x = 0;
   let view_offset_y = 0;
+  let hover_c = -1;
+  let hover_r = -1;
 
   function render(ctx) {
     ctx.clearRect(0, 0, screen_w, screen_h);
@@ -1133,6 +1182,195 @@
       ctx.fillText(ft.str, ft.x, ft.y);
       ctx.restore();
     });
+
+    // 7. Grid & Coordinates Editor Overlay
+    if (state.show_grid) {
+      draw_grid_overlay(ctx);
+    }
+
+    ctx.restore();
+  }
+
+  // ---------------------------------------------------------------------------
+  // INTERACTIVE GRID & TILE COORDINATES EDITOR OVERLAY
+  // ---------------------------------------------------------------------------
+  function draw_grid_overlay(ctx) {
+    ctx.save();
+
+    // 1. Grid Lines
+    ctx.strokeStyle = 'rgba(0, 255, 213, 0.45)';
+    ctx.lineWidth = 1;
+    for (let c = 0; c <= COLS; c++) {
+      ctx.beginPath();
+      ctx.moveTo(c * TILE, 0);
+      ctx.lineTo(c * TILE, ROWS * TILE);
+      ctx.stroke();
+    }
+    for (let r = 0; r <= ROWS; r++) {
+      ctx.beginPath();
+      ctx.moveTo(0, r * TILE);
+      ctx.lineTo(COLS * TILE, r * TILE);
+      ctx.stroke();
+    }
+
+    // 2. Cell Coordinates & Content in EVERY tile
+    const tmpl = MAZE_TEMPLATES[state.level_index];
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const x = c * TILE;
+        const y = r * TILE;
+        const cell = state.grid[r][c];
+        const isHovered = (c === hover_c && r === hover_r);
+
+        // Background badge for coordinate text
+        ctx.fillStyle = isHovered ? 'rgba(255, 235, 59, 0.45)' : 'rgba(0, 0, 0, 0.6)';
+        ctx.fillRect(x + 1, y + 1, 26, 12);
+
+        // Coordinate text (col,row)
+        ctx.fillStyle = isHovered ? '#000000' : '#00ffd5';
+        ctx.font = 'bold 8.5px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${c},${r}`, x + 14, y + 10);
+
+        // Cell type label in center
+        let label = cell;
+        let labelColor = '#90caf9';
+        if (tmpl && tmpl.start && tmpl.start.c === c && tmpl.start.r === r) {
+          label = 'START';
+          labelColor = '#76ff03';
+        } else if (cell === 'W') {
+          label = 'W';
+          labelColor = 'rgba(255, 255, 255, 0.28)';
+        } else if (cell === '.') {
+          label = '·';
+          labelColor = 'rgba(255, 255, 255, 0.25)';
+        } else if (cell === 'K') {
+          label = 'KEY';
+          labelColor = '#ffd600';
+        } else if (cell === 'G') {
+          label = 'GATE';
+          labelColor = '#ff1744';
+        } else if (cell === 'I') {
+          label = 'EXIT';
+          labelColor = '#00e676';
+        } else if (cell === 'S') {
+          label = 'LEVER';
+          labelColor = '#00e5ff';
+        } else if (cell === 'P') {
+          label = 'PLATE';
+          labelColor = '#ff9100';
+        } else if (cell === 'C') {
+          label = 'CONV';
+          labelColor = '#2979ff';
+        }
+
+        ctx.fillStyle = labelColor;
+        ctx.font = 'bold 9px -apple-system, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, x + TILE / 2, y + TILE - 4);
+      }
+    }
+
+    // 3. Alien Patrol Paths Visualization
+    state.aliens.forEach((a, i) => {
+      ctx.save();
+      const pal = ALIEN_PALETTES[a.palette_id % ALIEN_PALETTES.length];
+      const strokeColor = pal.blush || '#ff4081';
+
+      if (a.axis === 'x') {
+        const startX = a.min * TILE;
+        const endX = (a.max + 1) * TILE;
+        const lineY = a.r * TILE + TILE / 2;
+
+        ctx.strokeStyle = strokeColor;
+        ctx.lineWidth = 3;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(startX, lineY);
+        ctx.lineTo(endX, lineY);
+        ctx.stroke();
+
+        ctx.fillStyle = strokeColor;
+        ctx.fillRect(startX, lineY - 6, 3, 12);
+        ctx.fillRect(endX - 3, lineY - 6, 3, 12);
+
+        ctx.fillStyle = 'rgba(0,0,0,0.85)';
+        ctx.fillRect((startX + endX) / 2 - 38, lineY - 17, 76, 13);
+        ctx.fillStyle = strokeColor;
+        ctx.font = 'bold 9px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(`👽 G${i+1} [c${a.min}↔c${a.max}]`, (startX + endX) / 2, lineY - 7);
+      } else {
+        const startY = a.min * TILE;
+        const endY = (a.max + 1) * TILE;
+        const lineX = a.c * TILE + TILE / 2;
+
+        ctx.strokeStyle = strokeColor;
+        ctx.lineWidth = 3;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(lineX, startY);
+        ctx.lineTo(lineX, endY);
+        ctx.stroke();
+
+        ctx.fillStyle = strokeColor;
+        ctx.fillRect(lineX - 6, startY, 12, 3);
+        ctx.fillRect(lineX - 6, endY - 3, 12, 3);
+
+        ctx.fillStyle = 'rgba(0,0,0,0.85)';
+        ctx.fillRect(lineX - 38, (startY + endY) / 2 - 7, 76, 13);
+        ctx.fillStyle = strokeColor;
+        ctx.font = 'bold 9px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(`👽 G${i+1} [r${a.min}↔r${a.max}]`, lineX, (startY + endY) / 2 + 3);
+      }
+      ctx.restore();
+    });
+
+    // 4. Hovered Cell Highlight Box & Floating Inspector Bar
+    if (hover_c >= 0 && hover_r >= 0) {
+      const hx = hover_c * TILE;
+      const hy = hover_r * TILE;
+      const hcell = state.grid[hover_r][hover_c];
+
+      ctx.strokeStyle = '#ffd600';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(hx, hy, TILE, TILE);
+
+      let typeDesc = `Floor '.'`;
+      if (tmpl && tmpl.start && tmpl.start.c === hover_c && tmpl.start.r === hover_r) typeDesc = `PLAYER START`;
+      else if (hcell === 'W') typeDesc = `Wall 'W'`;
+      else if (hcell === 'G') typeDesc = `Gate 'G' (${state.gate_open ? 'OPEN' : 'LOCKED'})`;
+      else if (hcell === 'K') typeDesc = `Keycard 'K'`;
+      else if (hcell === 'I') typeDesc = `Level Exit 'I'`;
+      else if (hcell === 'S') typeDesc = `Switch / Lever 'S'`;
+      else if (hcell === 'P') typeDesc = `Pressure Plate 'P'`;
+      else if (hcell === 'C') typeDesc = `Conveyor 'C'`;
+
+      // Top Pinned Inspector Banner
+      ctx.fillStyle = 'rgba(10, 8, 24, 0.95)';
+      ctx.fillRect(WORLD_W / 2 - 190, 8, 380, 24);
+      ctx.strokeStyle = '#ffd600';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(WORLD_W / 2 - 190, 8, 380, 24);
+
+      ctx.fillStyle = '#ffd600';
+      ctx.font = 'bold 12px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`📐 CELL [Col: ${hover_c}, Row: ${hover_r}]  ➜  ${typeDesc}`, WORLD_W / 2, 24);
+    } else {
+      // General Editor Mode Helper Banner
+      ctx.fillStyle = 'rgba(10, 8, 24, 0.85)';
+      ctx.fillRect(WORLD_W / 2 - 180, 8, 360, 20);
+      ctx.strokeStyle = '#00ffd5';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(WORLD_W / 2 - 180, 8, 360, 20);
+
+      ctx.fillStyle = '#00ffd5';
+      ctx.font = 'bold 10px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`📐 GRID EDITOR MODE: Hover to inspect | [G] Toggle | [L] Cycle Level`, WORLD_W / 2, 22);
+    }
 
     ctx.restore();
   }
@@ -1777,6 +2015,12 @@
       else if (['Digit1', 'Space'].includes(e.code)) { use_gadget(1); e.preventDefault(); }
       else if (['Digit2', 'ShiftLeft', 'ShiftRight'].includes(e.code)) { use_gadget(2); e.preventDefault(); }
       else if (['Digit3', 'KeyE'].includes(e.code)) { use_gadget(3); e.preventDefault(); }
+      else if (['KeyG', 'Backquote'].includes(e.code)) { toggle_grid(); e.preventDefault(); }
+      else if (['KeyL'].includes(e.code)) { load_level((state.level_index + 1) % MAZE_TEMPLATES.length); e.preventDefault(); }
+      else if (['Digit7'].includes(e.code)) { load_level(0); e.preventDefault(); }
+      else if (['Digit8'].includes(e.code)) { load_level(1); e.preventDefault(); }
+      else if (['Digit9'].includes(e.code)) { load_level(2); e.preventDefault(); }
+      else if (['Digit0'].includes(e.code)) { load_level(3); e.preventDefault(); }
     });
 
     window.addEventListener('keyup', (e) => {
@@ -1784,6 +2028,32 @@
       else if (['ArrowDown', 'KeyS'].includes(e.code)) { input.down = false; }
       else if (['ArrowLeft', 'KeyA'].includes(e.code)) { input.left = false; }
       else if (['ArrowRight', 'KeyD'].includes(e.code)) { input.right = false; }
+    });
+
+    // Canvas Mouse Inspection (Editor Hover Coordinates)
+    canvas.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.clientX - rect.left;
+      const clientY = e.clientY - rect.top;
+      const worldX = (clientX - view_offset_x) / view_scale;
+      const worldY = (clientY - view_offset_y) / view_scale;
+      hover_c = Math.floor(worldX / TILE);
+      hover_r = Math.floor(worldY / TILE);
+      if (hover_c < 0 || hover_c >= COLS || hover_r < 0 || hover_r >= ROWS) {
+        hover_c = -1;
+        hover_r = -1;
+      }
+    });
+
+    canvas.addEventListener('mouseleave', () => {
+      hover_c = -1;
+      hover_r = -1;
+    });
+
+    canvas.addEventListener('click', () => {
+      if (!state.show_grid || hover_c < 0 || hover_r < 0) return;
+      const cell = state.grid[hover_r][hover_c];
+      spawn_floating_text(hover_c * TILE + TILE / 2, hover_r * TILE, `[Col ${hover_c}, Row ${hover_r}]: '${cell}'`, '#ffd600');
     });
 
     // Touch D-Pad Listeners (iPad / Mobile)
@@ -1815,6 +2085,19 @@
     if (btn_honk) btn_honk.addEventListener('mousedown', () => use_gadget(1));
     if (btn_moon) btn_moon.addEventListener('mousedown', () => use_gadget(2));
     if (btn_donut) btn_donut.addEventListener('mousedown', () => use_gadget(3));
+
+    // Grid Editor Mode Toggle
+    const grid_toggle = document.getElementById('grid-toggle');
+    function toggle_grid() {
+      state.show_grid = !state.show_grid;
+      if (grid_toggle) {
+        grid_toggle.classList.toggle('active', state.show_grid);
+      }
+      spawn_floating_text(WORLD_W / 2, 40, state.show_grid ? "📐 GRID EDITOR ON" : "GRID OFF", state.show_grid ? "#00ffd5" : "#ff9100");
+    }
+    if (grid_toggle) {
+      grid_toggle.addEventListener('click', toggle_grid);
+    }
 
     // Audio & SFX Toggles
     const music_toggle = document.getElementById('music-toggle');

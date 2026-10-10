@@ -107,6 +107,14 @@ body {
   transform: translateY(-1px);
 }
 
+.hud-btn.active {
+  background: #00ffd5;
+  color: #0d0c1d;
+  font-weight: 800;
+  border-color: #00ffd5;
+  box-shadow: 0 0 12px rgba(0, 255, 213, 0.45);
+}
+
 /* Canvas Area */
 #canvas-container {
   position: relative;
