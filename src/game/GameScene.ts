@@ -10,6 +10,7 @@ import {
 } from './draw';
 import { DEFAULT_OUTFIT, alienHeight, drawAlien, drawHearts, drawLeo, updateFace, type Mood, type Outfit } from './art/characters';
 import { sound } from './sound';
+import { Fx } from './fx';
 
 export interface SceneData {
   level: LevelData;
@@ -49,6 +50,16 @@ const CATCHPHRASES: Record<string, Partial<Record<keyof typeof LINES, string[]>>
   'Key Guard': { spotted: ['THAT KEY IS MINE! ...and so are HUGS!'] },
 };
 
+/** Big centered text pop (READY? / GO! / RUN!). */
+function banner(text: string): void {
+  const el = document.getElementById('banner');
+  if (!el) return;
+  el.textContent = text;
+  el.classList.remove('show');
+  void el.offsetWidth; // restart the CSS animation
+  el.classList.add('show');
+}
+
 export class GameScene extends Phaser.Scene {
   private world!: World;
   private data_!: SceneData;
@@ -72,6 +83,19 @@ export class GameScene extends Phaser.Scene {
   private walks: number[] = [];
   private leoFace = 1;
   private leoWalk = 0;
+  // juice
+  private fxs = new Fx();
+  private decalG!: Phaser.GameObjects.Graphics;
+  private hitstop = 0;
+  private slowmo = 0;
+  private punch = 0;
+  private baseZoom = 1;
+  private introT = 0;
+  private leoJump = 0;
+  private dustT = 0;
+  private wasSkidding: boolean[] = [];
+  private skidFrom: { x: number; y: number }[] = [];
+  private flights: { x0: number; y0: number; x1: number; y1: number; t: number }[] = [];
 
   constructor() { super('game'); }
 
@@ -86,6 +110,12 @@ export class GameScene extends Phaser.Scene {
     this.walks = this.world.aliens.map(() => 0);
     this.leoFace = 1;
     this.leoWalk = 0;
+    this.fxs = new Fx();
+    this.hitstop = this.slowmo = this.punch = this.leoJump = this.dustT = 0;
+    this.introT = 1.8;
+    this.wasSkidding = this.world.aliens.map(() => false);
+    this.skidFrom = this.world.aliens.map(a => ({ x: a.x, y: a.y }));
+    this.flights = [];
   }
 
   create(): void {
@@ -95,6 +125,7 @@ export class GameScene extends Phaser.Scene {
     drawGround(this.ground, w.grid);
     this.dynList = dynamicTiles(w.grid);
     this.dyn = this.add.graphics();
+    this.decalG = this.add.graphics();
     this.cones = this.add.graphics();
     this.actors = this.add.graphics();
     this.fx = this.add.graphics().setDepth(15);
@@ -112,16 +143,30 @@ export class GameScene extends Phaser.Scene {
     const cam = this.cameras.main;
     cam.setBounds(0, 0, w.grid.w * TILE, w.grid.h * TILE);
     this.follow = { x: w.player.x, y: w.player.y };
-    cam.startFollow(this.follow, false, 0.12, 0.12);
     this.fitZoom();
+    // Level-start reveal: show the whole map, then swoop down to Leo.
+    const mapW = w.grid.w * TILE, mapH = w.grid.h * TILE;
+    cam.setZoom(Math.min(this.scale.width / mapW, this.scale.height / mapH) * 0.98);
+    cam.centerOn(mapW / 2, mapH / 2);
+    banner('READY?');
+    const view = { x: mapW / 2, y: mapH / 2, zoom: cam.zoom };
+    this.time.delayedCall(900, () => {
+      this.tweens.add({
+        targets: view, x: w.player.x, y: w.player.y, zoom: this.baseZoom, duration: 700, ease: 'Sine.easeInOut',
+        onUpdate: () => { cam.setZoom(view.zoom); cam.centerOn(view.x, view.y); },
+      });
+    });
+    this.time.delayedCall(1650, () => { cam.startFollow(this.follow, false, 0.12, 0.12); banner('GO!'); });
     this.scale.on('resize', this.fitZoom, this);
     this.events.once('shutdown', () => this.scale.off('resize', this.fitZoom, this));
   }
 
   private fitZoom(): void {
     const { width, height } = this.scale;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const z = Math.min(width / (17 * TILE), height / (11 * TILE));
-    this.cameras.main.setZoom(Phaser.Math.Clamp(z, 0.55, 1.8));
+    this.baseZoom = Phaser.Math.Clamp(z, 0.55 * dpr, 1.8 * dpr);
+    if (this.introT <= 0) this.cameras.main.setZoom(this.baseZoom);
   }
 
   update(_time: number, deltaMs: number): void {
@@ -129,13 +174,20 @@ export class GameScene extends Phaser.Scene {
     const dt = Math.min(deltaMs, 100) / 1000;
     this.t += dt;
     this.frameDt = dt;
-    this.acc += dt;
+    if (this.introT > 0) this.introT -= dt;
+    else if (this.hitstop > 0) this.hitstop -= dt;
+    else {
+      if (this.slowmo > 0) this.slowmo -= dt;
+      this.acc += this.slowmo > 0 ? dt * 0.35 : dt;
+    }
     let first = true;
     while (this.acc >= DT) {
       w.step(this.data_.controls.read(first));
       first = false;
       this.acc -= DT;
     }
+    if (this.introT > 0) this.data_.controls.read(true); // swallow early button presses
+    this.juice(dt);
     for (const e of w.drainEvents()) this.onEvent(e);
     this.follow.x = w.player.x;
     this.follow.y = w.player.y;
@@ -145,6 +197,27 @@ export class GameScene extends Phaser.Scene {
       this.ended = true;
       this.time.delayedCall(w.status === 'won' ? 900 : 700, () => this.data_.onEnd(w));
     }
+  }
+
+  /** Per-frame juice: camera punch, dust, skid marks, particles. */
+  private juice(dt: number): void {
+    const w = this.world, cam = this.cameras.main;
+    if (this.introT <= 0) {
+      this.punch *= Math.pow(0.02, dt);
+      cam.setZoom(this.baseZoom * (1 + this.punch));
+    }
+    if (this.leoJump > 0) this.leoJump -= dt;
+    const p = w.player;
+    this.dustT -= dt;
+    if (p.running && this.dustT <= 0) { this.fxs.burst('dust', p.x, p.y, 2, { speed: 30 }); this.dustT = 0.09; }
+    w.aliens.forEach((a, i) => {
+      if (a.state === 'chase' && a.speed > 150 && (Math.floor(this.t * 10) + i) % 2 === 0) this.fxs.burst('dust', a.x, a.y, 1, { speed: 20 });
+      if (this.wasSkidding[i] && !a.skidding) this.fxs.skidMark(this.skidFrom[i].x, this.skidFrom[i].y, a.x, a.y);
+      this.wasSkidding[i] = a.skidding;
+    });
+    for (const f of this.flights) f.t += dt / 0.35;
+    this.flights = this.flights.filter(f => f.t < 1);
+    this.fxs.update(dt);
   }
 
   private pick(list: string[]): string {
@@ -164,7 +237,7 @@ export class GameScene extends Phaser.Scene {
       fontFamily: 'Chalkboard SE, Comic Sans MS, sans-serif', fontSize: `${size}px`, fontStyle: 'bold',
       color, stroke: '#2a1f45', strokeThickness: 5,
     }).setOrigin(0.5, 1).setDepth(20).setScale(0.4);
-    this.tweens.add({ targets: label, scale: 1, duration: 140, ease: 'Back.Out' });
+    this.tweens.add({ targets: label, scale: 1, duration: 140, ease: 'Back.easeOut' });
     this.tweens.add({ targets: label, y: y - 64, alpha: 0, delay: 800, duration: 600, onComplete: () => label.destroy() });
   }
 
@@ -172,38 +245,38 @@ export class GameScene extends Phaser.Scene {
     const cam = this.cameras.main;
     switch (e.type) {
       case 'noise': this.rings.push({ x: e.x, y: e.y, r: e.radius, age: 0 }); break;
-      case 'spotted': sound.spotted(); this.say(e.x, e.y, this.line('spotted', e), '#ff4d6d', 22); break;
+      case 'spotted': this.punch = 0.08; this.hitstop = 0.08; if (!this.world.aliens.some((a, i) => i !== e.alien && a.state === 'chase')) this.slowmo = 0.35; sound.spotted(); this.say(e.x, e.y, this.line('spotted', e), '#ff4d6d', 22); break;
       case 'suspicious': sound.suspicious(); this.say(e.x, e.y, this.line('suspicious', e), '#ffd23c'); break;
       case 'lost': this.say(e.x, e.y, this.line('lost', e), '#bde0ff'); break;
       case 'tired': this.say(e.x, e.y, this.line('tired', e), '#bde0ff'); break;
-      case 'skid': sound.skid(); this.say(e.x, e.y, this.line('skid', e), '#ffffff', 18); break;
-      case 'bump': sound.bump(); cam.shake(120, 0.004); this.say(e.x, e.y, this.line('bump', e), '#ffe14a', 18); break;
-      case 'stun': this.say(e.x, e.y, this.line('stun', e), '#ffe14a'); break;
+      case 'skid': this.skidFrom[e.alien] = { x: e.x, y: e.y }; this.fxs.burst('dust', e.x, e.y, 10, { speed: 90 }); sound.skid(); this.say(e.x, e.y, this.line('skid', e), '#ffffff', 18); break;
+      case 'bump': this.fxs.burst('star', e.x, e.y - 30, 5, { speed: 70, size: 5 }); sound.bump(); cam.shake(120, 0.004); this.say(e.x, e.y, this.line('bump', e), '#ffe14a', 18); break;
+      case 'stun': this.fxs.burst('star', e.x, e.y - 40, 4, { speed: 40, size: 4 }); this.say(e.x, e.y, this.line('stun', e), '#ffe14a'); break;
       case 'investigate': this.say(e.x, e.y, this.line('investigate', e), '#ffd23c', 16); break;
       case 'fooled': sound.fooled(); this.say(e.x, e.y, this.line('fooled', e), '#d9a6ff', 16); break;
-      case 'eat': sound.eat(); this.say(e.x, e.y, this.line('eat', e), '#ff6eb4'); break;
+      case 'eat': this.fxs.burst('crumb', e.x, e.y - 20, 14, { color: 0xd99a52, up: 80 }); sound.eat(); this.say(e.x, e.y, this.line('eat', e), '#ff6eb4'); break;
       case 'wake': sound.wake(); this.say(e.x, e.y, this.line('wake', e), '#ff6eb4'); break;
-      case 'hug': sound.hug(); cam.shake(200, 0.006); this.say(e.x, e.y, this.line('hug', e), '#ff6eb4', 24); break;
-      case 'bonk': sound.bonk(); this.say(e.x, e.y, '-1 ❤️', '#ff4d6d', 26); break;
+      case 'hug': this.hitstop = 0.15; this.punch = 0.1; this.fxs.burst('heart', e.x, e.y - 30, 10, { speed: 90, size: 5, life: 1 }); sound.hug(); cam.shake(200, 0.006); this.say(e.x, e.y, this.line('hug', e), '#ff6eb4', 24); break;
+      case 'bonk': this.fxs.burst('star', e.x, e.y - 30, 6, { speed: 80, size: 5 }); sound.bonk(); this.say(e.x, e.y, '-1 ❤️', '#ff4d6d', 26); break;
       case 'stolen': this.say(e.x, e.y - 20, this.line('stolen', e), '#ffd23c', 16); break;
       case 'beep': sound.beep(); this.say(e.x, e.y, this.line('beep', e), '#ff3355', 20); break;
-      case 'honk': sound.honk(); this.rings.push({ x: e.x, y: e.y, r: CONFIG.honk.stunRadius, age: 0 }); break;
-      case 'moonwalk': sound.moonwalk(); this.say(e.x, e.y, 'MOONWALK!', '#d9a6ff'); break;
-      case 'donut': sound.donut(); break;
+      case 'honk': this.fxs.burst('note', e.x, e.y - 30, 6, { speed: 90, size: 4, life: 0.9 }); sound.honk(); this.rings.push({ x: e.x, y: e.y, r: CONFIG.honk.stunRadius, age: 0 }); break;
+      case 'moonwalk': this.fxs.burst('spark', e.x, e.y, 10, { color: 0xd9a6ff }); sound.moonwalk(); this.say(e.x, e.y, 'MOONWALK!', '#d9a6ff'); break;
+      case 'donut': this.flights.push({ x0: this.world.player.x, y0: this.world.player.y, x1: e.x, y1: e.y, t: 0 }); sound.donut(); break;
       case 'noDonutRoom': this.say(e.x, e.y, 'No room to throw!', '#ffffff', 14); break;
-      case 'key': sound.pickup(); this.say(e.x, e.y, 'KEY!', '#ffd23c', 24); break;
-      case 'gate': sound.gate(); drawGround(this.ground, this.world.grid); this.say(e.x, e.y, 'GATE OPEN!', '#ffa028', 22); break;
-      case 'item': sound.pickup(); this.say(e.x, e.y, 'SHIP PART!', '#fff27a', 26); break;
-      case 'checkpoint': sound.checkpoint(); this.say(e.x, e.y, 'Checkpoint!', '#4ae07a', 16); break;
+      case 'key': this.hitstop = 0.1; this.leoJump = 0.4; this.fxs.burst('spark', e.x, e.y, 14, { color: 0xffd23c, speed: 120 }); sound.pickup(); this.say(e.x, e.y, 'KEY!', '#ffd23c', 24); break;
+      case 'gate': this.fxs.burst('spark', e.x, e.y, 16, { color: 0xffa028, speed: 140 }); sound.gate(); drawGround(this.ground, this.world.grid); this.say(e.x, e.y, 'GATE OPEN!', '#ffa028', 22); break;
+      case 'item': this.hitstop = 0.12; this.leoJump = 0.5; this.punch = 0.08; this.fxs.burst('spark', e.x, e.y, 24, { color: 0xfff27a, speed: 160 }); sound.pickup(); this.say(e.x, e.y, 'SHIP PART!', '#fff27a', 26); break;
+      case 'checkpoint': this.fxs.burst('spark', e.x, e.y - 10, 10, { color: 0x4ae07a, speed: 90 }); sound.checkpoint(); this.say(e.x, e.y, 'Checkpoint!', '#4ae07a', 16); break;
       case 'squeak': sound.squeak(); this.say(e.x, e.y, 'SQUEAK!', '#ffe65a', 14); break;
       case 'lever': sound.gate(); this.say(e.x, e.y, 'BELTS FLIPPED!', '#fff07a', 18); break;
-      case 'hack': sound.pickup(); this.say(e.x, e.y, 'HACKED!', '#4ad6ff', 22); break;
+      case 'hack': this.fxs.burst('spark', e.x, e.y - 10, 14, { color: 0x4ad6ff, speed: 110 }); sound.pickup(); this.say(e.x, e.y, 'HACKED!', '#4ad6ff', 22); break;
       case 'shieldDown': sound.win(); drawGround(this.ground, this.world.grid); this.say(e.x, e.y - 30, 'SHIELD DOWN!', '#4ad6ff', 26); break;
       case 'laserOpen': sound.gate(); break;
       case 'laserClose': sound.suspicious(); break;
       case 'tooLight': this.say(e.x, e.y, 'Too light! Need someone BIG.', '#ffffff', 14); break;
-      case 'alarm': sound.alarm(); cam.shake(400, 0.008); this.say(e.x, e.y - 20, '🚨 ALARM! RUN! 🚨', '#ff3355', 28); break;
-      case 'win': sound.win(); break;
+      case 'alarm': this.hitstop = 0.2; this.punch = 0.12; banner('🚨 RUN! 🚨'); sound.alarm(); cam.shake(400, 0.008); this.say(e.x, e.y - 20, '🚨 ALARM! RUN! 🚨', '#ff3355', 28); break;
+      case 'win': this.leoJump = 0.6; this.punch = 0.15; this.fxs.burst('confetti', e.x, e.y - 40, 60, { speed: 260, up: 220, life: 1.6, size: 4 }); sound.win(); break;
       case 'lose': sound.lose(); break;
       case 'calm': break;
     }
@@ -223,7 +296,12 @@ export class GameScene extends Phaser.Scene {
     for (const term of w.terminals) drawTerminal(g, term, t);
     for (const k of w.keys) if (!k.taken) drawKey(g, k.x, k.y, t);
     for (const it of w.items) if (!it.taken) drawItem(g, it.x, it.y, t);
-    if (w.donut) drawDonut(g, w.donut.x, w.donut.y, t);
+    if (w.donut && !this.flights.length) drawDonut(g, w.donut.x, w.donut.y, t);
+    for (const f of this.flights) {
+      const k = f.t, x = f.x0 + (f.x1 - f.x0) * k, y = f.y0 + (f.y1 - f.y0) * k - Math.sin(k * Math.PI) * 50;
+      g.fillStyle(0x000000, 0.15).fillEllipse(f.x0 + (f.x1 - f.x0) * k, f.y0 + (f.y1 - f.y0) * k + 8, 16, 5);
+      drawDonut(g, x, y - 10, t * 3);
+    }
 
     // animation state (render-only)
     const dt = this.frameDt;
@@ -246,12 +324,14 @@ export class GameScene extends Phaser.Scene {
     const order = w.aliens.map((a, i) => ({ a, i })).sort((u, v) => depth(u.a.y, u.a.kind === 'drone') - depth(v.a.y, v.a.kind === 'drone'));
     let playerDrawn = false;
     const hugged = w.hug !== null;
+    const jump = this.leoJump > 0 ? Math.sin((this.leoJump / 0.5) * Math.PI) * 18 : 0;
+    const leo = jump > 0 ? { ...p, y: p.y - jump } : p;
     for (const { a, i } of order) {
-      if (!playerDrawn && p.y < depth(a.y, a.kind === 'drone')) { drawLeo(g, p, this.leoFace, this.leoWalk, mood, outfit, t); playerDrawn = true; }
+      if (!playerDrawn && p.y < depth(a.y, a.kind === 'drone')) { drawLeo(g, leo, this.leoFace, this.leoWalk, mood, outfit, t); playerDrawn = true; }
       drawAlien(g, a, { face: this.faces[i], walk: this.walks[i] }, t, a.state === 'hugging');
       drawStatus(g, a, t);
     }
-    if (!playerDrawn) drawLeo(g, p, this.leoFace, this.leoWalk, mood, outfit, t);
+    if (!playerDrawn) drawLeo(g, leo, this.leoFace, this.leoWalk, mood, outfit, t);
     if (hugged) drawHearts(g, p.x, p.y, t);
 
     w.aliens.forEach((a, i) => {
@@ -267,8 +347,10 @@ export class GameScene extends Phaser.Scene {
 
     this.alarmTint.setAlpha(w.alarm ? 0.06 + 0.05 * Math.sin(t * 8) : 0);
 
+    this.fxs.drawDecals(this.decalG);
     const f = this.fx;
     f.clear();
+    this.fxs.draw(f);
     this.rings = this.rings.filter(r => (r.age += this.frameDt) < 0.5);
     for (const r of this.rings) {
       const k = r.age / 0.5;

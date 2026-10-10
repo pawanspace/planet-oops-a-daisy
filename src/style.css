@@ -67,3 +67,9 @@ body.touch #touch { display: block; }
 #hint.faded { opacity: 0.25; }
 body:not(.playing) #touch, body:not(.playing) #hint { visibility: hidden; }
 @media (max-width: 700px) { #panel .zones { grid-template-columns: 1fr; } }
+
+#banner { position: fixed; left: 0; right: 0; top: 38%; text-align: center; font-size: 64px; font-weight: bold;
+  color: #ffd23c; text-shadow: 0 4px 0 #2a1f45, 0 0 20px #2a1f45; pointer-events: none; opacity: 0; }
+#banner.show { animation: banner 0.9s ease-out; }
+@keyframes banner { 0% { transform: scale(0.3); opacity: 0; } 25% { transform: scale(1.15); opacity: 1; }
+  40% { transform: scale(1); } 80% { opacity: 1; } 100% { transform: scale(1.05); opacity: 0; } }

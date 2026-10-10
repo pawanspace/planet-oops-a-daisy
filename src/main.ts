@@ -34,6 +34,7 @@ const game = new Phaser.Game({
 });
 window.addEventListener('resize', () => game.scale.resize(innerWidth * DPR, innerHeight * DPR));
 game.scene.add('game', GameScene, false);
+if (import.meta.env.DEV) (window as unknown as { __game: Phaser.Game }).__game = game;
 
 const partFor = (idx: number) => {
   const z = LEVELS[idx].zone;
