@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Planet Oops-a-Daisy: The Confused Alien Crossing</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="game-wrapper">
+    <!-- Top HUD -->
+    <header id="hud">
+      <div class="hud-group">
+        <span class="hud-badge" id="hud-level">Lvl 1</span>
+        <div class="hud-item">
+          <span>TIME:</span>
+          <span class="hud-badge" id="hud-timer">01:30</span>
+        </div>
+        <div class="hud-item">
+          <span>SCORE:</span>
+          <span class="hud-badge" id="hud-score">0</span>
+        </div>
+      </div>
+
+      <div class="hud-group">
+        <div class="hud-item">
+          <span>HEARTS:</span>
+          <div id="hearts-container">
+            <span class="heart-icon">❤️</span>
+            <span class="heart-icon">❤️</span>
+            <span class="heart-icon">❤️</span>
+          </div>
+        </div>
+        <button id="music-toggle" class="hud-btn" aria-label="Toggle Music">🎵 MUSIC</button>
+        <button id="sfx-toggle" class="hud-btn" aria-label="Toggle SFX">🔊 SFX</button>
+      </div>
+    </header>
+
+    <!-- Background Music Audio Element -->
+    <audio id="bgm" src="music.mp3" loop preload="auto"></audio>
+
+    <!-- Canvas Area -->
+    <main id="canvas-container">
+      <canvas id="game-canvas"></canvas>
+
+      <!-- Modal Overlays (Title, Win, Game Over) -->
+      <div id="modal-overlay" class="overlay-screen">
+        <h1 id="modal-title">🚀 PLANET OOPS-A-DAISY</h1>
+        <h2 id="modal-subtitle">The Alien Maze Adventure</h2>
+        <p id="modal-desc">
+          Navigate winding corridors, solve unique alien puzzles, dodge backwards-walking guards, and escape before the countdown timer expires!
+        </p>
+
+        <!-- Mode Selector -->
+        <div id="diff-selector" class="diff-row">
+          <button type="button" class="diff-btn" data-diff="EASY">🟢 EASY<br><small>3 mins · 5 Hearts</small></button>
+          <button type="button" class="diff-btn active" data-diff="MEDIUM">🟡 MEDIUM<br><small>90 sec · 3 Hearts</small></button>
+          <button type="button" class="diff-btn" data-diff="HARD">🔴 HARD<br><small>50 sec · 2 Hearts</small></button>
+        </div>
+
+        <div class="controls-hint">
+          <div>🕹️ <b>Move:</b> Arrow Keys / WASD</div>
+          <div>🎺 <b>Honk (Freeze 3s):</b> 1 / Space</div>
+          <div>👟 <b>Moonwalk (Phase / Conveyors):</b> 2 / Shift</div>
+          <div>🍩 <b>Donut (Lure / Pressure Plates):</b> 3 / E</div>
+        </div>
+
+        <button id="modal-btn" class="play-button">START MAZE ADVENTURE</button>
+      </div>
+    </main>
+
+    <!-- AI Story / Dialogue Prompt Bar -->
+    <footer id="dialogue-banner">
+      <div id="ai-icon">🤖</div>
+      <div id="ai-message">
+        NAV-9000: "Autopilot recalibration complete! Welcome to Planet Oops-a-Daisy. Mind the reverse knees."
+      </div>
+    </footer>
+
+    <!-- iPad & Mobile Touch Controls Bar -->
+    <nav id="touch-controls" aria-label="Touch Controls">
+      <!-- Virtual 4-Way D-Pad (Left Thumb) -->
+      <div class="dpad-grid">
+        <button id="t-up" class="t-btn dp-up" aria-label="Up">⬆️</button>
+        <button id="t-left" class="t-btn dp-left" aria-label="Left">⬅️</button>
+        <button id="t-right" class="t-btn dp-right" aria-label="Right">➡️</button>
+        <button id="t-down" class="t-btn dp-down" aria-label="Down">⬇️</button>
+      </div>
+
+      <!-- Tourist Utility Gadgets (Right Thumb) -->
+      <div class="action-row">
+        <button id="t-honk" class="gadget-touch-btn gb-honk" aria-label="Honk">
+          🎺
+          <span>HONK</span>
+        </button>
+        <button id="t-moonwalk" class="gadget-touch-btn gb-moonwalk" aria-label="Moonwalk">
+          👟
+          <span>WALK</span>
+        </button>
+        <button id="t-donut" class="gadget-touch-btn gb-donut" aria-label="Donut">
+          🍩
+          <span>DONUT</span>
+        </button>
+      </div>
+    </nav>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
