@@ -524,8 +524,15 @@
     particles: [],
     floating_texts: [],
 
-    // Grid Editor Mode
-    show_grid: false
+    // Keycard Spawn Location
+    key_spawn: null,
+
+    // Level Designer & Grid Mode
+    show_grid: false,
+    editor_mode: false,
+    editor_tool: 'wall',
+    selected_alien_idx: -1,
+    is_painting: false
   };
 
   // ---------------------------------------------------------------------------
@@ -571,7 +578,19 @@
   // ---------------------------------------------------------------------------
   function load_level(idx) {
     state.level_index = Math.min(idx, MAZE_TEMPLATES.length - 1);
-    const tmpl = MAZE_TEMPLATES[state.level_index];
+    let tmpl = MAZE_TEMPLATES[state.level_index];
+
+    // Check for user-saved custom level in localStorage
+    try {
+      const saved_custom = localStorage.getItem('custom_level_' + state.level_index);
+      if (saved_custom) {
+        const parsed = JSON.parse(saved_custom);
+        if (parsed && Array.isArray(parsed.grid) && Array.isArray(parsed.aliens)) {
+          tmpl = parsed;
+        }
+      }
+    } catch (e) {}
+
     const diff = DIFFICULTY_SETTINGS[state.difficulty];
 
     state.time_left = diff.time_limit;
@@ -599,6 +618,16 @@
 
     // Copy Maze Grid
     state.grid = tmpl.grid.map(row => row.split(''));
+
+    // Record Keycard spawn location for clean reset upon death
+    state.key_spawn = null;
+    for (let r = 0; r < state.grid.length; r++) {
+      for (let c = 0; c < state.grid[r].length; c++) {
+        if (state.grid[r][c] === 'K') {
+          state.key_spawn = { c, r };
+        }
+      }
+    }
 
     // Reset Gadgets
     state.honk_cooldown = 0;
@@ -1142,6 +1171,16 @@
     state.hearts--;
     state.invincible_t = 1.8; // Safe respawn window
     state.donut_eater_index = -1;
+
+    // Cleanly drop keycard back to its original floor spawn if player was holding it!
+    if (state.has_key) {
+      state.has_key = false;
+      state.gate_open = false;
+      if (state.key_spawn) {
+        state.grid[state.key_spawn.r][state.key_spawn.c] = 'K';
+      }
+      spawn_floating_text(state.player_x, state.player_y - 36, "🗝️ KEYCARD DROPPED BACK!", "#ffd600");
+    }
 
     // 1. Reset player back to start of maze
     const tmpl = MAZE_TEMPLATES[state.level_index];
@@ -2193,7 +2232,7 @@
       else if (['Digit1', 'Space'].includes(e.code)) { use_gadget(1); e.preventDefault(); }
       else if (['Digit2', 'ShiftLeft', 'ShiftRight'].includes(e.code)) { use_gadget(2); e.preventDefault(); }
       else if (['Digit3', 'KeyE'].includes(e.code)) { use_gadget(3); e.preventDefault(); }
-      else if (['KeyG', 'Backquote'].includes(e.code)) { toggle_grid(); e.preventDefault(); }
+      else if (['KeyG', 'Backquote', 'Escape'].includes(e.code)) { toggle_editor(); e.preventDefault(); }
       else if (['KeyL'].includes(e.code)) { load_level((state.level_index + 1) % MAZE_TEMPLATES.length); e.preventDefault(); }
       else if (['Digit7'].includes(e.code)) { load_level(0); e.preventDefault(); }
       else if (['Digit8'].includes(e.code)) { load_level(1); e.preventDefault(); }
@@ -2228,10 +2267,20 @@
       hover_r = -1;
     });
 
-    canvas.addEventListener('click', () => {
-      if (!state.show_grid || hover_c < 0 || hover_r < 0) return;
-      const cell = state.grid[hover_r][hover_c];
-      spawn_floating_text(hover_c * TILE + TILE / 2, hover_r * TILE, `[Col ${hover_c}, Row ${hover_r}]: '${cell}'`, '#ffd600');
+    canvas.addEventListener('mousedown', (e) => {
+      if (!state.editor_mode || hover_c < 0 || hover_r < 0) return;
+      state.is_painting = true;
+      apply_editor_brush(hover_c, hover_r);
+    });
+
+    window.addEventListener('mouseup', () => {
+      state.is_painting = false;
+    });
+
+    canvas.addEventListener('mouseleave', () => {
+      hover_c = -1;
+      hover_r = -1;
+      state.is_painting = false;
     });
 
     // Touch D-Pad Listeners (iPad / Mobile)
@@ -2264,17 +2313,346 @@
     if (btn_moon) btn_moon.addEventListener('mousedown', () => use_gadget(2));
     if (btn_donut) btn_donut.addEventListener('mousedown', () => use_gadget(3));
 
-    // Grid Editor Mode Toggle
-    const grid_toggle = document.getElementById('grid-toggle');
-    function toggle_grid() {
-      state.show_grid = !state.show_grid;
-      if (grid_toggle) {
-        grid_toggle.classList.toggle('active', state.show_grid);
+    // ---------------------------------------------------------------------------
+    // INTERACTIVE LEVEL DESIGNER & EDITOR CONTROLS
+    // ---------------------------------------------------------------------------
+    function toggle_editor() {
+      state.editor_mode = !state.editor_mode;
+      state.show_grid = state.editor_mode;
+      const editor_panel = document.getElementById('editor-panel');
+      const editor_toggle = document.getElementById('editor-toggle') || document.getElementById('grid-toggle');
+
+      if (state.editor_mode) {
+        state.game_state = 'EDIT';
+        if (editor_panel) editor_panel.classList.remove('hidden');
+        if (editor_toggle) editor_toggle.classList.add('active');
+        spawn_floating_text(WORLD_W / 2, 50, "🛠️ LEVEL DESIGNER ACTIVE", "#ffd54f");
+      } else {
+        state.game_state = 'PLAY';
+        if (editor_panel) editor_panel.classList.add('hidden');
+        if (editor_toggle) editor_toggle.classList.remove('active');
+        const alien_panel = document.getElementById('alien-controls-panel');
+        if (alien_panel) alien_panel.style.display = 'none';
+        select_alien(-1);
       }
-      spawn_floating_text(WORLD_W / 2, 40, state.show_grid ? "📐 GRID EDITOR ON" : "GRID OFF", state.show_grid ? "#00ffd5" : "#ff9100");
     }
-    if (grid_toggle) {
-      grid_toggle.addEventListener('click', toggle_grid);
+
+    function set_editor_tool(tool) {
+      state.editor_tool = tool;
+      document.querySelectorAll('.editor-tool-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tool === tool);
+      });
+      if (tool !== 'select') {
+        select_alien(-1);
+      }
+    }
+
+    function apply_editor_brush(c, r) {
+      if (c < 0 || c >= COLS || r < 0 || r >= ROWS) return;
+      const tmpl = MAZE_TEMPLATES[state.level_index];
+
+      // Perimeter border protection: cannot hollow out the exterior borders
+      const is_border = (c === 0 || c === COLS - 1 || r === 0 || r === ROWS - 1);
+      if (is_border && state.editor_tool !== 'wall') return;
+
+      if (state.editor_tool === 'wall') {
+        state.grid[r][c] = 'W';
+      } else if (state.editor_tool === 'floor') {
+        state.grid[r][c] = '.';
+      } else if (state.editor_tool === 'key') {
+        for (let cr = 0; cr < ROWS; cr++) {
+          for (let cc = 0; cc < COLS; cc++) {
+            if (state.grid[cr][cc] === 'K') state.grid[cr][cc] = '.';
+          }
+        }
+        state.grid[r][c] = 'K';
+        state.key_spawn = { c, r };
+        audio.play_pickup();
+        spawn_floating_text(c * TILE + TILE / 2, r * TILE, "🗝️ KEY PLACED!", "#ffd600");
+      } else if (state.editor_tool === 'gate') {
+        for (let cr = 0; cr < ROWS; cr++) {
+          for (let cc = 0; cc < COLS; cc++) {
+            if (state.grid[cr][cc] === 'G') state.grid[cr][cc] = '.';
+          }
+        }
+        state.grid[r][c] = 'G';
+        audio.play_switch();
+        spawn_floating_text(c * TILE + TILE / 2, r * TILE, "🚪 GATE PLACED!", "#ff5722");
+      } else if (state.editor_tool === 'item') {
+        for (let cr = 0; cr < ROWS; cr++) {
+          for (let cc = 0; cc < COLS; cc++) {
+            if (state.grid[cr][cc] === 'I') state.grid[cr][cc] = '.';
+          }
+        }
+        state.grid[r][c] = 'I';
+        audio.play_win();
+        spawn_floating_text(c * TILE + TILE / 2, r * TILE, "⭐ GOAL ITEM PLACED!", "#00e676");
+      } else if (state.editor_tool === 'start') {
+        tmpl.start = { c, r };
+        state.player_x = c * TILE + TILE / 2;
+        state.player_y = r * TILE + TILE / 2;
+        state.grid[r][c] = '.';
+        audio.play_hop();
+        spawn_floating_text(state.player_x, state.player_y - 20, "🚀 START POINT SET!", "#00ffd5");
+      } else if (state.editor_tool === 'alien') {
+        const diff = DIFFICULTY_SETTINGS[state.difficulty];
+        const new_alien = {
+          x: c * TILE + TILE / 2,
+          y: r * TILE + TILE / 2,
+          home_c: c,
+          home_r: r,
+          home_dir: 1,
+          dir: 1,
+          vx: 1,
+          vy: 0,
+          axis: 'x',
+          min: Math.max(1, c - 2),
+          max: Math.min(COLS - 2, c + 2),
+          base_spd: 60 * diff.alien_speed_mult,
+          spd: 60 * diff.alien_speed_mult,
+          phase: state.aliens.length * 1.5,
+          frozen_t: 0,
+          alert: false,
+          chasing: false,
+          lost_sight_t: 0,
+          sugar_rush_t: 0,
+          is_eating: false,
+          eat_t: 0,
+          palette_id: state.aliens.length % 5
+        };
+        state.aliens.push(new_alien);
+        audio.play_alert();
+        spawn_floating_text(new_alien.x, new_alien.y - 24, `👽 ALIEN #${state.aliens.length} ADDED!`, "#ff4081");
+        select_alien(state.aliens.length - 1);
+      } else if (state.editor_tool === 'select') {
+        const clicked_idx = state.aliens.findIndex(a => {
+          const ac = Math.floor(a.x / TILE);
+          const ar = Math.floor(a.y / TILE);
+          return ac === c && ar === r;
+        });
+        select_alien(clicked_idx);
+      }
+    }
+
+    function select_alien(idx) {
+      state.selected_alien_idx = idx;
+      const alien_panel = document.getElementById('alien-controls-panel');
+      if (!alien_panel) return;
+
+      if (idx < 0 || idx >= state.aliens.length) {
+        alien_panel.style.display = 'none';
+        return;
+      }
+
+      const a = state.aliens[idx];
+      alien_panel.style.display = 'flex';
+      document.getElementById('selected-alien-label').textContent = `👽 ALIEN #${idx + 1}:`;
+      document.getElementById('btn-axis-toggle').textContent = `Axis: ${a.axis === 'x' ? '↔️ X' : '↕️ Y'}`;
+      document.getElementById('val-min').textContent = a.min;
+      document.getElementById('val-max').textContent = a.max;
+      document.getElementById('btn-speed-toggle').textContent = `Speed: ${Math.round(a.spd)}`;
+    }
+
+    function get_current_level_data() {
+      const tmpl = MAZE_TEMPLATES[state.level_index];
+      const grid_strings = state.grid.map(row => row.join(''));
+      const aliens_data = state.aliens.map(a => ({
+        c: a.home_c !== undefined ? a.home_c : Math.floor(a.x / TILE),
+        r: a.home_r !== undefined ? a.home_r : Math.floor(a.y / TILE),
+        dir: a.home_dir || 1,
+        axis: a.axis,
+        min: a.min,
+        max: a.max,
+        spd: Math.round(a.spd / (DIFFICULTY_SETTINGS[state.difficulty].alien_speed_mult || 1))
+      }));
+
+      return {
+        level: state.level_index + 1,
+        name: tmpl.name,
+        item_name: tmpl.item_name,
+        puzzle_info: tmpl.puzzle_info,
+        nav_quote: tmpl.nav_quote,
+        start: { ...tmpl.start },
+        grid: grid_strings,
+        aliens: aliens_data,
+        plate: tmpl.plate ? { ...tmpl.plate } : undefined,
+        gate: tmpl.gate ? { ...tmpl.gate } : undefined,
+        conveyor_dir: tmpl.conveyor_dir
+      };
+    }
+
+    function save_current_level() {
+      const data = get_current_level_data();
+      localStorage.setItem('custom_level_' + state.level_index, JSON.stringify(data));
+      audio.play_win();
+      spawn_floating_text(WORLD_W / 2, 60, "💾 LEVEL SAVED TO BROWSER!", "#38ef7d");
+    }
+
+    function test_play_level() {
+      save_current_level();
+      toggle_editor();
+      load_level(state.level_index);
+      spawn_floating_text(WORLD_W / 2, 60, "▶️ PLAYTEST ACTIVE (ESC FOR EDITOR)", "#00ffd5");
+    }
+
+    function export_level_json() {
+      const data = get_current_level_data();
+      const formatted = JSON.stringify(data, null, 2);
+      const modal = document.getElementById('json-modal');
+      const textarea = document.getElementById('json-textarea');
+      if (modal && textarea) {
+        textarea.value = formatted;
+        modal.classList.remove('hidden');
+      }
+    }
+
+    function reset_level_to_default() {
+      localStorage.removeItem('custom_level_' + state.level_index);
+      load_level(state.level_index);
+      select_alien(-1);
+      audio.play_switch();
+      spawn_floating_text(WORLD_W / 2, 60, "🔄 RESTORED ORIGINAL LEVEL", "#ffd54f");
+    }
+
+    // Bind Editor UI Buttons
+    const editor_toggle = document.getElementById('editor-toggle') || document.getElementById('grid-toggle');
+    if (editor_toggle) editor_toggle.addEventListener('click', toggle_editor);
+
+    document.querySelectorAll('.editor-tool-btn').forEach(btn => {
+      btn.addEventListener('click', () => set_editor_tool(btn.dataset.tool));
+    });
+
+    const btn_test = document.getElementById('btn-test-play');
+    if (btn_test) btn_test.addEventListener('click', test_play_level);
+
+    const btn_save = document.getElementById('btn-save-level');
+    if (btn_save) btn_save.addEventListener('click', save_current_level);
+
+    const btn_export = document.getElementById('btn-export-json');
+    if (btn_export) btn_export.addEventListener('click', export_level_json);
+
+    const btn_reset = document.getElementById('btn-reset-level');
+    if (btn_reset) btn_reset.addEventListener('click', reset_level_to_default);
+
+    const btn_exit = document.getElementById('btn-exit-editor');
+    if (btn_exit) btn_exit.addEventListener('click', toggle_editor);
+
+    // Alien Inspector actions
+    const btn_axis = document.getElementById('btn-axis-toggle');
+    if (btn_axis) {
+      btn_axis.addEventListener('click', () => {
+        if (state.selected_alien_idx < 0) return;
+        const a = state.aliens[state.selected_alien_idx];
+        a.axis = (a.axis === 'x') ? 'y' : 'x';
+        a.min = (a.axis === 'x') ? Math.max(1, a.home_c - 2) : Math.max(1, a.home_r - 2);
+        a.max = (a.axis === 'x') ? Math.min(COLS - 2, a.home_c + 2) : Math.min(ROWS - 2, a.home_r + 2);
+        select_alien(state.selected_alien_idx);
+      });
+    }
+
+    const btn_min_dec = document.getElementById('btn-min-dec');
+    if (btn_min_dec) {
+      btn_min_dec.addEventListener('click', () => {
+        if (state.selected_alien_idx < 0) return;
+        const a = state.aliens[state.selected_alien_idx];
+        a.min = Math.max(1, Math.round((a.min - 1) * 10) / 10);
+        select_alien(state.selected_alien_idx);
+      });
+    }
+
+    const btn_min_inc = document.getElementById('btn-min-inc');
+    if (btn_min_inc) {
+      btn_min_inc.addEventListener('click', () => {
+        if (state.selected_alien_idx < 0) return;
+        const a = state.aliens[state.selected_alien_idx];
+        if (a.min < a.max - 1) a.min = Math.round((a.min + 1) * 10) / 10;
+        select_alien(state.selected_alien_idx);
+      });
+    }
+
+    const btn_max_dec = document.getElementById('btn-max-dec');
+    if (btn_max_dec) {
+      btn_max_dec.addEventListener('click', () => {
+        if (state.selected_alien_idx < 0) return;
+        const a = state.aliens[state.selected_alien_idx];
+        if (a.max > a.min + 1) a.max = Math.round((a.max - 1) * 10) / 10;
+        select_alien(state.selected_alien_idx);
+      });
+    }
+
+    const btn_max_inc = document.getElementById('btn-max-inc');
+    if (btn_max_inc) {
+      btn_max_inc.addEventListener('click', () => {
+        if (state.selected_alien_idx < 0) return;
+        const a = state.aliens[state.selected_alien_idx];
+        const limit = a.axis === 'x' ? COLS - 2 : ROWS - 2;
+        a.max = Math.min(limit, Math.round((a.max + 1) * 10) / 10);
+        select_alien(state.selected_alien_idx);
+      });
+    }
+
+    const btn_spd = document.getElementById('btn-speed-toggle');
+    if (btn_spd) {
+      btn_spd.addEventListener('click', () => {
+        if (state.selected_alien_idx < 0) return;
+        const a = state.aliens[state.selected_alien_idx];
+        const spds = [50, 65, 80, 100, 120];
+        const currentSpd = Math.round(a.spd);
+        const nextIdx = (spds.findIndex(s => s >= currentSpd) + 1) % spds.length;
+        a.spd = spds[nextIdx];
+        a.base_spd = a.spd;
+        select_alien(state.selected_alien_idx);
+      });
+    }
+
+    const btn_del = document.getElementById('btn-del-alien');
+    if (btn_del) {
+      btn_del.addEventListener('click', () => {
+        if (state.selected_alien_idx < 0) return;
+        state.aliens.splice(state.selected_alien_idx, 1);
+        select_alien(-1);
+        audio.play_bonk();
+      });
+    }
+
+    // JSON Modal controls
+    const btn_close_json = document.getElementById('btn-close-json');
+    if (btn_close_json) {
+      btn_close_json.addEventListener('click', () => {
+        const modal = document.getElementById('json-modal');
+        if (modal) modal.classList.add('hidden');
+      });
+    }
+
+    const btn_copy_json = document.getElementById('btn-copy-json');
+    if (btn_copy_json) {
+      btn_copy_json.addEventListener('click', () => {
+        const textarea = document.getElementById('json-textarea');
+        if (textarea) {
+          navigator.clipboard.writeText(textarea.value);
+          spawn_floating_text(WORLD_W / 2, 80, "📋 COPIED TO CLIPBOARD!", "#38ef7d");
+        }
+      });
+    }
+
+    const btn_apply_json = document.getElementById('btn-apply-json');
+    if (btn_apply_json) {
+      btn_apply_json.addEventListener('click', () => {
+        const textarea = document.getElementById('json-textarea');
+        if (textarea) {
+          try {
+            const parsed = JSON.parse(textarea.value);
+            localStorage.setItem('custom_level_' + state.level_index, JSON.stringify(parsed));
+            load_level(state.level_index);
+            const modal = document.getElementById('json-modal');
+            if (modal) modal.classList.add('hidden');
+            audio.play_win();
+            spawn_floating_text(WORLD_W / 2, 80, "📥 JSON LEVEL APPLIED!", "#00ffd5");
+          } catch (err) {
+            alert("Invalid JSON format: " + err.message);
+          }
+        }
+      });
     }
 
     // Audio & SFX Toggles
