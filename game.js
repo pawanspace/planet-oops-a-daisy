@@ -322,7 +322,7 @@
       grid: [
         "WWWWWWWWWWWWWWWWWW",
         "W.......WW......GW",
-        "W.WWWW.WWW.WWWWWIW",
+        "W.WWWW.WWW.WWWW.IW",
         "W.W..W.....W....WW",
         "W.WW.W.WWW.W.WWW.W",
         "W....W...W...W...W",
