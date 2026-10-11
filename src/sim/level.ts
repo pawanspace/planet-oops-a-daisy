@@ -95,6 +95,7 @@ export interface LevelData {
   aliens: AlienSpec[];
   parTime: number;       // seconds, for the speed star
   alarmAfter: number;    // pickups (keys + items) before the alarm goes off (0 = never)
+  theme?: string;        // zone look for custom levels: 'suburbia' | 'school' | 'market' | 'spaceport'
 }
 
 /**
@@ -175,6 +176,7 @@ export function loadTiled(map: TiledMap, fallbackName = 'Untitled'): LevelData {
   level.hint = String(mp.hint ?? '');
   level.parTime = num(mp.parTime) ?? 60;
   level.alarmAfter = num(mp.alarmAfter) ?? 0;
+  if (mp.theme) level.theme = String(mp.theme);
   // Convert every Tiled tile number into one of our tile codes. Anything unknown becomes a wall (safe default).
   level.tiles = ground.data.map(gid => {
     const g = gid & FLIP_MASK;
@@ -233,3 +235,50 @@ export function loadTiled(map: TiledMap, fallbackName = 'Untitled'): LevelData {
 }
 // 🧠 QUIZ Q9: A lookout has facing = 90 in the level file. How many radians is that, and which way is it looking
 //            on screen? (Hint: y grows downwards.)
+
+// -----------------------------------------------------------------------------
+// Writing Tiled maps (used by the level editor's Export button and "My levels")
+// -----------------------------------------------------------------------------
+/**
+ * The opposite of loadTiled: turn LevelData back into a Tiled map, so a level made in the in-game editor can be
+ * opened in Tiled or copied into /levels. loadTiled(toTiled(level)) gives the same level back.
+ */
+export function toTiled(level: LevelData): TiledMap & Record<string, unknown> {
+  let id = 1;
+  const prop = (name: string, value: unknown) => ({ name, type: typeof value === 'number' ? 'float' : typeof value === 'boolean' ? 'bool' : 'string', value });
+  const point = (type: string, v: Vec): TiledObject & Record<string, unknown> =>
+    ({ id: id++, name: '', type, x: v.x, y: v.y, width: 0, height: 0, rotation: 0, visible: true, point: true });
+  const objects: (TiledObject & Record<string, unknown>)[] = [point('PlayerStart', level.start)];
+  for (const v of level.checkpoints) objects.push(point('Checkpoint', v));
+  for (const v of level.keys) objects.push(point('Key', v));
+  for (const v of level.items) objects.push(point('Item', v));
+  for (const v of level.levers) objects.push(point('Lever', v));
+  for (const v of level.terminals) objects.push(point('Terminal', v));
+  for (const v of level.socks) objects.push(point('Sock', v));
+  for (const a of level.aliens) {
+    const properties = [prop('kind', a.kind)];
+    if (a.speed !== undefined) properties.push(prop('speed', a.speed));
+    if (a.facing !== undefined) properties.push(prop('facing', Math.round((a.facing * 180) / Math.PI)));
+    if (a.turnEvery !== undefined) properties.push(prop('turnEvery', a.turnEvery));
+    if (a.pause !== undefined) properties.push(prop('pause', a.pause));
+    if (a.loop) properties.push(prop('loop', true));
+    const o: TiledObject & Record<string, unknown> = {
+      id: id++, name: a.name ?? '', type: 'Alien', x: a.x, y: a.y, width: 0, height: 0, rotation: 0, visible: true, properties,
+    };
+    if (a.route.length > 1) o.polyline = a.route.map(p => ({ x: p.x - a.x, y: p.y - a.y }));
+    else o.point = true;
+    objects.push(o);
+  }
+  const mapProps = [prop('name', level.name), prop('hint', level.hint), prop('parTime', level.parTime), prop('alarmAfter', level.alarmAfter)];
+  if (level.theme) mapProps.push(prop('theme', level.theme));
+  return {
+    compressionlevel: -1, width: level.width, height: level.height, infinite: false, orientation: 'orthogonal',
+    renderorder: 'right-down', tiledversion: '1.10.2', version: '1.10', type: 'map', tilewidth: TILE, tileheight: TILE,
+    nextlayerid: 3, nextobjectid: id, properties: mapProps,
+    tilesets: [{ firstgid: 1, source: 'tiles.tsx' }],
+    layers: [
+      { id: 1, name: 'ground', type: 'tilelayer', width: level.width, height: level.height, x: 0, y: 0, opacity: 1, visible: true, data: [...level.tiles] },
+      { id: 2, name: 'objects', type: 'objectgroup', draworder: 'topdown', x: 0, y: 0, opacity: 1, visible: true, objects },
+    ],
+  } as unknown as TiledMap & Record<string, unknown>;
+}

@@ -5,7 +5,7 @@ import { CONFIG, DT, KINDS } from '../sim/config';
 import { Grid, center, tileOf } from '../sim/grid';
 import { T, type TileCode } from '../sim/level';
 import { NO_INPUT, World, type Input } from '../sim/world';
-import { carefulBot } from '../../tests/bot';
+import { carefulBot } from '../sim/bot';
 import { sound } from '../game/sound';
 import { Mini, alien, ascii, keyInput, runWorld } from './mini';
 

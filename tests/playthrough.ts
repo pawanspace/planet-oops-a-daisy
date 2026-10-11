@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { Difficulty } from '../src/sim/config';
 import { CAMPAIGN } from '../src/sim/campaign';
 import { loadTiled, type TiledMap } from '../src/sim/level';
-import { carefulBot, rushBot } from './bot';
+import { carefulBot, rushBot } from '../src/sim/bot';
 
 const DIFFS: Difficulty[] = ['easy', 'normal', 'hard'];
 

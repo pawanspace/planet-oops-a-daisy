@@ -2,7 +2,7 @@
 // `// #endregion name` markers) and colours them. Because the snippets come from the real files at build time,
 // they can never go out of date.
 
-const SOURCES = import.meta.glob(['../sim/*.ts', '../game/**/*.ts', '../../tests/bot.ts'], {
+const SOURCES = import.meta.glob(['../sim/*.ts', '../game/**/*.ts'], {
   query: '?raw', import: 'default', eager: true,
 }) as Record<string, string>;
 

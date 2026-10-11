@@ -29,6 +29,9 @@ Touch: left stick, right buttons.
 12 campaign levels in 4 zones (Suburbia, School, Market, Spaceport) plus a sandbox. All are unlocked; stars are
 saved in the browser.
 
+* **In-game editor** (🛠️ on the title screen): paint tiles, place things and aliens, draw patrol routes, live checks,
+  🤖 robot check, test play, save to *My levels*, and export/import Tiled `.tmj` files. Remix any campaign level from 📂 Open.
+  Exported files can go straight into `levels/` (add the id to `src/sim/campaign.ts` to make it a campaign level).
 * The campaign maps come from `tools/gen-campaign.py`:
   `python3 tools/gen-campaign.py && for f in levels/drafts/[0-9]*.mjs; do node tools/draft-level.mjs $f; done`
 * Or open any `levels/<id>.tmj` in [Tiled](https://www.mapeditor.org/) and edit it there (conventions in DESIGN.md).

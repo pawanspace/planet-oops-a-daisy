@@ -31,7 +31,7 @@ Never made a game before? Good, this is for you, whether you're 10 or 40.
 | 8 | `src/game/draw.ts`, `art/themes.ts`, `fx.ts` | Shapes, colours, vision cones, zone looks, particles |
 | 9 | `src/game/sound.ts` | Making sound effects from maths; music crossfades |
 | 10 | `src/game/StoryScene.ts`, `TitleScene.ts`, `src/main.ts` | Story panels, menus, how it all starts |
-| 11 | `tests/` | Tests and the bots that prove every level can be beaten |
+| 11 | `src/sim/bot.ts`, `tests/` | The bots that prove every level can be beaten, and the tests |
 
 ## Change something!
 

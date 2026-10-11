@@ -103,7 +103,7 @@ Each level introduces one idea, then the zone finale combines them.
 2. A careful player can finish without gadgets, unless the level hands you a gadget to teach it.
 3. No soft-locks: gates never close on the player; the player can always get back to a checkpoint.
 4. One new idea per level.
-5. Bot playthroughs on the real simulation (`tests/bot.ts`): the careful bot wins every level on Easy, Normal and Hard
+5. Bot playthroughs on the real simulation (`src/sim/bot.ts`): the careful bot wins every level on Easy, Normal and Hard
    without gadgets; the "run straight and spam gadgets" bot never gets a clean run (it loses, gets chased or hugged).
 
 ---
@@ -116,6 +116,8 @@ Each level introduces one idea, then the zone finale combines them.
 * Story: opening comic, zone cutscenes, ending + credits; living title screen with the ship being rebuilt.
 * Sound: CC0 music per zone with a chase layer crossfade, footsteps per surface, heartbeat, alien voices.
 * Rewards: outfits (stars), hidden socks, sticker book, share card. Installable, offline-capable web app.
+* Level editor (`src/editor/editor.ts` + `src/game/EditorScene.ts`): WYSIWYG with the game's art, live validation
+  (`src/sim/validate.ts`, also used by the tests), robot check (`src/sim/bot.ts`), test play, My levels, .tmj export/import.
 
 ## 10. Technology
 

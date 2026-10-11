@@ -21,6 +21,9 @@ import { GameScene, type SceneData } from './game/GameScene';
 import { GalleryScene } from './game/GalleryScene';
 import { StoryScene, type StoryId } from './game/StoryScene';
 import { TitleScene } from './game/TitleScene';
+import { EditorScene, type EditorView } from './game/EditorScene';
+import { Editor, loadMyLevel, myLevels } from './editor/editor';
+import type { LevelData } from './sim/level';
 import { LEVELS, loadStars, saveStars } from './game/levels';
 import { sound } from './game/sound';
 import { ZONE_THEMES } from './game/art/themes';
@@ -58,12 +61,13 @@ window.addEventListener('resize', () => game.scale.resize(innerWidth * DPR, inne
 game.scene.add('game', GameScene, false);
 game.scene.add('story', StoryScene, false);
 game.scene.add('title', TitleScene, false);
+game.scene.add('editor', EditorScene, false);
 if (import.meta.env.DEV) Object.assign(window, { __game: game, __sound: sound });
 
-type SceneKey = 'game' | 'story' | 'title';
+type SceneKey = 'game' | 'story' | 'title' | 'editor';
 /** Run exactly one scene. */
 function run(key: SceneKey, data: object): void {
-  for (const k of ['game', 'story', 'title'] as SceneKey[]) {
+  for (const k of ['game', 'story', 'title', 'editor'] as SceneKey[]) {
     if (k !== key && (game.scene.isActive(k) || game.scene.isPaused(k))) game.scene.stop(k);
   }
   if (game.scene.isActive(key) || game.scene.isPaused(key)) game.scene.getScene(key).scene.restart(data);
@@ -113,7 +117,7 @@ function showHome(): void {
     <p class="sub">Everyone's legs face backwards. <b>Their eyes look where they've been</b>, not where they're going.</p>
     <div class="row"><button data-act="levels" class="primary big">▶ PLAY</button></div>
     <div class="row diffs">${diffs}</div>
-    <div class="row"><button data-act="wardrobe" class="small">👕 Wardrobe</button><button data-act="stickers" class="small">📒 Stickers ${stickersEarned().size}/${STICKERS.length}</button><button data-act="intro" class="small">🎬 Intro</button><a class="small btnlink" href="learn.html">🎓 How it's made</a></div>
+    <div class="row"><button data-act="wardrobe" class="small">👕 Wardrobe</button><button data-act="stickers" class="small">📒 Stickers ${stickersEarned().size}/${STICKERS.length}</button><button data-act="intro" class="small">🎬 Intro</button><button data-act="editor" class="small">🛠️ Editor</button><a class="small btnlink" href="learn.html">🎓 How it's made</a></div>
     <p class="total">⭐ ${total} / ${CAMPAIGN.length * 9} · 🚀 Ship parts ${shipParts().filter(Boolean).length}/4 · 🧦 ${socksFound().size}/12</p>`);
 }
 
@@ -130,9 +134,14 @@ function showLevels(): void {
     return `<div class="zone ${zoneDone(zi) ? 'done' : ''}"><h2>${z.part} ${z.name} ${zoneDone(zi) ? '✅' : ''}</h2><div class="zone-levels">${levels}</div></div>`;
   }).join('');
   const sandbox = LEVELS.findIndex(l => l.zone < 0);
+  const mine = myLevels().sort((a, b) => b.updated - a.updated);
+  const mineHtml = `<div class="zone mine"><h2>🛠️ My levels <button data-act="editor" class="small">➕ Make one</button></h2>
+    ${mine.length ? `<div class="zone-levels">${mine.map(l => `<div class="my"><button class="level" data-mine="${l.id}"><b>▶</b><span>${l.name}</span></button><button class="small" data-edit="${l.id}">✏️ Edit</button></div>`).join('')}</div>`
+      : '<p class="small">Build your own levels in the 🛠️ Editor. They show up here.</p>'}</div>`;
   showOverlay('levels', `
     <div class="row top"><button data-act="home" class="small">◀ Back</button><h1>Pick a level</h1><span class="total">${DIFFICULTY[difficulty].label}</span></div>
     <div class="zones">${zones}</div>
+    ${mineHtml}
     <div class="row"><button data-level="${sandbox}" class="small">🧪 Sandbox</button></div>
     <p class="keys">Move: arrows / WASD · Run: Shift (noisy!) · 1 Honk · 2 Moonwalk · 3 Donut · P pause</p>`);
 }
@@ -152,6 +161,7 @@ function showLevelCard(idx: number): void {
 
 function startLevel(idx: number): void {
   levelIdx = idx;
+  custom = null;
   const entry = LEVELS[idx];
   hideOverlay();
   controls.reset();
@@ -164,6 +174,53 @@ function startLevel(idx: number): void {
   sound.music(theme, 'chase');
   const data: SceneData = { level: entry.data, difficulty, controls, onEnd, onFrame, theme, outfit: currentOutfit().outfit };
   run('game', data);
+}
+
+// ---------------------------------------------------------------------------
+// Custom levels (from the editor or "My levels")
+// ---------------------------------------------------------------------------
+let custom: { level: LevelData; back: (() => void) | null } | null = null;
+
+function playCustom(level: LevelData, back: (() => void) | null): void {
+  custom = { level, back };
+  hideOverlay();
+  controls.reset();
+  document.body.classList.add('playing');
+  $('hint').textContent = level.hint;
+  $('hint').classList.remove('faded');
+  setTimeout(() => $('hint').classList.add('faded'), 9000);
+  $('hud-level').textContent = `🛠️ ${level.name}`;
+  const theme = (ZONE_THEMES as string[]).includes(level.theme ?? '') ? (level.theme as typeof ZONE_THEMES[number]) : 'suburbia';
+  sound.music(theme, 'chase');
+  run('game', { level, difficulty, controls, onEnd, onFrame, theme, outfit: currentOutfit().outfit } satisfies SceneData);
+}
+
+function customEnd(w: World): void {
+  const c = custom!;
+  const won = w.status === 'won';
+  showOverlay('result', `
+    <h1>${won ? '🎉 You beat it!' : '💕 Hugged too many times!'}</h1>
+    ${won ? `<p>Time: ${formatTime(w.time)} (par ${formatTime(w.level.parTime)}) · chased ${w.timesChased}×</p>` : ''}
+    <div class="row"><button data-act="cretry" class="primary">Play again</button>
+    ${c.back ? '<button data-act="cback">🛠️ Back to editor</button>' : '<button data-act="levels">Levels</button>'}</div>`);
+}
+
+let editor: Editor | null = null;
+function openEditor(level?: LevelData, slot?: string): void {
+  hideOverlay();
+  document.body.classList.remove('playing');
+  document.body.classList.add('editing');
+  sound.music('menu');
+  const root = $('editor');
+  editor = new Editor({
+    root,
+    startScene: (view: EditorView) => { run('editor', view); return game.scene.getScene('editor') as EditorScene; },
+    stopScene: () => game.scene.stop('editor'),
+    testPlay: (lvl, back) => { document.body.classList.remove('editing'); playCustom(lvl, () => { document.body.classList.add('editing'); sound.music('menu'); hideOverlay(); back(); }); },
+    exit: () => { document.body.classList.remove('editing'); editor = null; showHome(); },
+    remixable: LEVELS.filter(l => l.zone >= 0).map(l => ({ id: l.id, name: l.data.name, data: l.data })),
+  }, level, slot);
+  editor.open();
 }
 
 function playStory(id: StoryId, then: () => void): void {
@@ -182,7 +239,7 @@ function onFrame(w: World): void {
   $('hud-time').textContent = formatTime(w.time);
   const got = w.items.filter(i => i.taken).length;
   const terms = w.terminals.length ? `  🖥️ ${w.terminals.filter(t => t.done).length}/${w.terminals.length}` : '';
-  $('hud-items').textContent = `${partFor(levelIdx)} ${got}/${w.items.length}${p.keys ? '  🗝️' : ''}${terms}${w.alarm ? '  🚨' : ''}`;
+  $('hud-items').textContent = `${custom ? '⚡' : partFor(levelIdx)} ${got}/${w.items.length}${p.keys ? '  🗝️' : ''}${terms}${w.alarm ? '  🚨' : ''}`;
   const k = DIFFICULTY[difficulty].cooldown;
   setCooldown('btn-honk', p.cd.honk, CONFIG.honk.cooldown * k);
   setCooldown('btn-moon', p.moonwalkT > 0 ? 0 : p.cd.moonwalk, CONFIG.moonwalk.cooldown * k);
@@ -199,6 +256,7 @@ function setCooldown(id: string, cd: number, max: number): void {
 
 function onEnd(w: World, run: RunStats): void {
   document.body.classList.remove('playing');
+  if (custom) { customEnd(w); return; }
   const entry = LEVELS[levelIdx];
   const starsBefore = totalStars();
   if (w.status !== 'won') {
@@ -291,13 +349,18 @@ $('panel').addEventListener('click', e => {
     localStorage.setItem('oops.difficulty', difficulty);
     showHome();
   } else if (b.dataset.level) showLevelCard(Number(b.dataset.level));
+  else if (b.dataset.mine) { const lvl = loadMyLevel(b.dataset.mine); if (lvl) playCustom(lvl, null); }
+  else if (b.dataset.edit) { const lvl = loadMyLevel(b.dataset.edit); if (lvl) openEditor(lvl, b.dataset.edit); }
   else if (b.dataset.outfit) {
     wearOutfit(b.dataset.outfit);
     (game.scene.getScene('title') as TitleScene | null)?.setOutfit(currentOutfit().outfit);
     showWardrobe();
   }
   else switch (b.dataset.act) {
-    case 'go': case 'retry': startLevel(levelIdx); break;
+    case 'go': case 'retry': if (custom) playCustom(custom.level, custom.back); else startLevel(levelIdx); break;
+    case 'cretry': playCustom(custom!.level, custom!.back); break;
+    case 'cback': { const back = custom!.back!; custom = null; game.scene.stop('game'); back(); break; }
+    case 'editor': openEditor(); break;
     case 'next': showLevelCard(levelIdx + 1); break;
     case 'levels': showLevels(); break;
     case 'home': showHome(); break;
@@ -314,7 +377,9 @@ function pause(): void {
   game.scene.pause('game');
   controls.reset();
   document.body.classList.remove('playing');
-  showOverlay('result', `<h1>⏸ Paused</h1><p>${LEVELS[levelIdx].data.hint}</p><div class="row"><button data-act="resume" class="primary">Resume</button><button data-act="retry">Restart</button><button data-act="levels">Levels</button></div>`);
+  const hint = custom ? custom.level.hint : LEVELS[levelIdx].data.hint;
+  const exit = custom?.back ? '<button data-act="cback">🛠️ Back to editor</button>' : '<button data-act="levels">Levels</button>';
+  showOverlay('result', `<h1>⏸ Paused</h1><p>${hint}</p><div class="row"><button data-act="resume" class="primary">Resume</button><button data-act="retry">Restart</button>${exit}</div>`);
 }
 window.addEventListener('keydown', e => {
   if (e.code === 'KeyP' || e.code === 'Escape') pause();

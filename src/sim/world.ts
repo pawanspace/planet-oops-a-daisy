@@ -224,7 +224,7 @@ export class World {
   }
 
   /**
-   * An independent COPY of the whole world. The bots (tests/bot.ts) use this to "imagine the future":
+   * An independent COPY of the whole world. The bots (src/sim/bot.ts) use this to "imagine the future":
    * copy the world, try a move in the copy, see if Leo gets hugged, then throw the copy away.
    * Every object that can change must be copied, otherwise the copy and the original would share it.
    */

@@ -17,11 +17,11 @@
 //
 // 🧠 QUIZ Q30: Why does the careful bot need world.clone() instead of trying moves on the real world?
 // =============================================================================
-import type { Difficulty } from '../src/sim/config';
-import { DT } from '../src/sim/config';
-import { Grid, center, tileOf } from '../src/sim/grid';
-import { CONVEYOR_DIR, T, isConveyor, type LevelData } from '../src/sim/level';
-import { NO_INPUT, World, type Input } from '../src/sim/world';
+import type { Difficulty } from './config';
+import { DT } from './config';
+import { Grid, center, tileOf } from './grid';
+import { CONVEYOR_DIR, T, isConveyor, type LevelData } from './level';
+import { NO_INPUT, World, type Input } from './world';
 
 type Tile = [number, number];
 export interface BotResult {

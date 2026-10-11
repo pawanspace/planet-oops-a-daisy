@@ -110,6 +110,19 @@ Noise matters. **Running** makes footstep noise that aliens hear **through walls
 * **📸 Share**: after a level, make a picture of your result to show your friends.
 * **🎬 Intro**: watch the opening story again from the title screen.
 
+## 🛠️ Make your own levels
+
+Press **🛠️ Editor** on the title screen.
+
+* **Paint** tiles on the left (walls, hedges, gates, carpets, belts...). Tick *Fill a rectangle* to paint big areas fast.
+* **Place things**: where Leo starts 🧑‍🚀, ship parts ⚡ (collect them all to win), keys, flags, levers, terminals, a sock.
+* **Add aliens**, then pick 👆 *select* and click one to change its kind, name, speed and which way it looks.
+  Use 📍 *route* to click the tiles it should patrol between.
+* **✅ Checks** on the right tell you if something's wrong ("the ship part can't be reached!").
+* **🤖 Robot check**: a robot plays your level. If it wins, your level is fair!
+* **▶ Test play** to try it, **💾 Save** to keep it. Saved levels show up in **My levels** on the level screen.
+* Made a mistake? **↩️ Undo** (or Ctrl/Cmd + Z).
+
 ## Stars ⭐
 
 Each level gives you up to three stars:

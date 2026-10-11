@@ -214,7 +214,7 @@ export const CHAPTERS: Chapter[] = [
         A second "rush" robot just runs at the goal spamming gadgets; the tests check it never gets a perfect run.` },
       { t: 'quiz', q: 'Why does the robot copy the world before trying a move?', options: ['To save memory', 'So imagining a move doesn\'t really do it', 'It\'s faster', 'To draw it'], answer: 1, why: 'Testing on the real world would really move Leo, maybe into a hug!' },
       { t: 'quiz', q: 'Why can a robot imagine the future at all?', options: ['It\'s magic', 'Because the rules are deterministic: same input, same result', 'It reads your mind', 'It cheats'], answer: 1, why: 'No randomness in the rules means the imagined future is exactly what will happen.' },
-      { t: 'grown', html: `See <code>tests/bot.ts</code> (careful + rush bots) and <code>tests/playthrough.ts</code>. The careful bot is a greedy
+      { t: 'grown', html: `See <code>src/sim/bot.ts</code> (careful + rush bots) and <code>tests/playthrough.ts</code>. The careful bot is a greedy
         receding-horizon planner over cloned worlds, with detours when stuck. It's not optimal, but it's a strong "is this solvable
         by a patient player" oracle, and it found several real level bugs during development.` },
     ],
@@ -223,7 +223,9 @@ export const CHAPTERS: Chapter[] = [
   {
     id: 'make', emoji: '🛠️', title: 'Make it yours', blurb: 'Design a level, then change the rules.',
     blocks: [
-      { t: 'p', html: 'Your turn! Draw a level with letters, play it, then ask the robot whether it can be beaten.' },
+      { t: 'p', html: `Your turn! Draw a level with letters, play it, then ask the robot whether it can be beaten.
+        (For the full version, open the game and press <b>🛠️ Editor</b> on the title screen: paint with the real art, draw alien
+        routes, and save your levels.)` },
       { t: 'demo', id: 'editor', title: 'Level workshop' },
       { t: 'p', html: `<b>Bigger ideas to try in the real code</b>:<ul>
         <li><b>A new alien kind</b>: copy the <code>stroller</code> line in <code>KINDS</code> (src/sim/config.ts), give it a new name and
