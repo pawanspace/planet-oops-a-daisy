@@ -1,4 +1,7 @@
-// The campaign: 4 zones x 3 levels. Level ids match files in /levels (<id>.tmj).
+// =============================================================================
+// The campaign: 4 zones × 3 levels, in play order. Each level id matches a file in /levels (<id>.tmj).
+// 🧪 TRY IT: add 'sandbox' to Suburbia's list and it becomes level 4 of zone 1 in the menu.
+// =============================================================================
 export interface Zone { name: string; part: string; levels: string[] }
 
 export const CAMPAIGN: Zone[] = [

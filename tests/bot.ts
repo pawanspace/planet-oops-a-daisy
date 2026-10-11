@@ -1,5 +1,22 @@
-// Bots that play the real simulation. Used to prove levels are solvable (careful bot) and that
-// brute force doesn't trivialise them (rush bot).
+// =============================================================================
+// 📘 LESSON: Robots that play the game (so we know every level can be beaten)
+// =============================================================================
+// Two "bots" play the REAL game rules (the same World the screen uses), thousands of times faster than a person.
+//
+// 🤖 THE CAREFUL BOT is a "look-ahead" player. Every 0.1 s it:
+//   1. picks a goal (the key, then a terminal, then the ship part) and plans a path with pathfinding;
+//   2. lists a few things it COULD do: walk, run, wait, step aside (dodge), or later use a gadget;
+//   3. IMAGINES each one: it CLONES the world (world.clone()), plays that choice 1.6 s into the future in the
+//      copy, and checks: did I get hugged? did anyone spot me?
+//   4. does the first choice that stays safe. If it has waited too long, it marks that way as blocked and
+//      plans a detour.
+// If the careful bot can finish a level without gadgets on Easy, Normal and Hard, a careful kid can too.
+//
+// 🏃 THE RUSH BOT walks straight at the goal, honking and moonwalking whenever an alien gets close. The tests
+// check it never gets a perfect run, so spamming gadgets isn't a cheat code.
+//
+// 🧠 QUIZ Q30: Why does the careful bot need world.clone() instead of trying moves on the real world?
+// =============================================================================
 import type { Difficulty } from '../src/sim/config';
 import { DT } from '../src/sim/config';
 import { Grid, center, tileOf } from '../src/sim/grid';
@@ -116,6 +133,7 @@ function steer(w: World, path: Tile[], run: boolean): Input | null {
 type Policy = (w: World) => Input;
 interface Risk { hug: number; seen: number } // steps until it happens (> horizon = never)
 
+/** Imagine the future: copy the world, play `first` then `policy` for `horizon` steps, report when bad things happen. */
 function risk(w: World, first: Input[], policy: Policy, horizon: number): Risk {
   const sim = w.clone();
   const out: Risk = { hug: horizon + 1, seen: horizon + 1 };

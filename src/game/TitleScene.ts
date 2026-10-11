@@ -1,4 +1,10 @@
-// Living title screen behind the menu: the daisy planet turning, the ship being rebuilt, locals strolling backwards.
+// =============================================================================
+// 📘 LESSON: The living title screen
+// =============================================================================
+// Behind the menu, a scene keeps drawing: the planet turns, the ship shows which parts you've rebuilt, Leo shows
+// off his outfit, and locals stroll around the planet. They walk along a CIRCLE: a point on a circle of radius r
+// around (cx, cy) at angle a is   (cx + cos(a)·r, cy + sin(a)·r).  Increase `a` slowly and they walk round.
+// =============================================================================
 import Phaser from 'phaser';
 import type { AlienKind } from '../sim/config';
 import type { Alien } from '../sim/world';

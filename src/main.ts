@@ -1,3 +1,17 @@
+// =============================================================================
+// 📘 LESSON: main.ts — where everything starts
+// =============================================================================
+// When the page loads, the browser runs this file first. It:
+//   1. connects the controls (keyboard + touch buttons),
+//   2. creates the Phaser game (the drawing canvas) and registers our scenes: game, story, title,
+//   3. shows the menus (home, level select, wardrobe, stickers...). Menus are plain HTML built from strings,
+//      because buttons and text are easiest in HTML; Phaser draws the game world behind them.
+//   4. reacts to button clicks: start a level, play a story, save stars...
+// Only ONE scene runs at a time (see run()), so the title screen stops when a level starts.
+//
+// A note on template strings: `Hello ${name}!` with backticks puts the value of `name` inside the text.
+// 💡 EXAMPLE: const n = 3; `⭐ ${n} stars` → "⭐ 3 stars".
+// =============================================================================
 import Phaser from 'phaser';
 import { CAMPAIGN } from './sim/campaign';
 import { CONFIG, DIFFICULTY, type Difficulty } from './sim/config';
@@ -30,6 +44,7 @@ let difficulty: Difficulty = (localStorage.getItem('oops.difficulty') as Difficu
 let levelIdx = 0;
 
 // Render at the screen's real pixel density (sharp on iPad/Retina), displayed at CSS size.
+// 💡 An iPad has devicePixelRatio 2: every "CSS pixel" is really 2×2 screen pixels. We draw at the real size.
 const DPR = Math.min(window.devicePixelRatio || 1, 2);
 const game = new Phaser.Game({
   type: Phaser.AUTO,

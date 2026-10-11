@@ -1,3 +1,13 @@
+// =============================================================================
+// 📘 LESSON: Tests — little experiments that check the rules still work
+// =============================================================================
+// Each `it('...', () => { ... })` builds a tiny level, plays the real rules for a moment, and uses expect() to
+// check what happened. Run them all with:  npm test
+// 💡 EXAMPLE: "sees a player standing BEHIND it" puts an alien walking right and Leo behind it, waits 0.3 s, and
+//    expects the alien to be 'suspicious'. If someone breaks the backwards-eyes rule, this test goes red.
+// 🧪 TRY IT: change visionRange-related numbers in config.ts (e.g. the Stroller's vision 5 → 1) and run npm test.
+//    Which tests fail? That's the tests protecting the game!
+// =============================================================================
 import { describe, expect, it } from 'vitest';
 import { TILE } from '../src/sim/config';
 import { center, tileOf } from '../src/sim/grid';

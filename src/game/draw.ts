@@ -1,4 +1,17 @@
-// Procedural drawing of tiles and characters with Phaser Graphics. Render-only: never changes the sim.
+// =============================================================================
+// 📘 LESSON: Drawing with shapes
+// =============================================================================
+// There are no picture files for the map or the objects: everything is drawn with simple shapes every frame,
+// using a Phaser "Graphics" object, like drawing with a pen in code:
+//     g.fillStyle(0xff6eb4)          → pick a colour (0xRRGGBB: red, green, blue, each 00–ff)
+//     g.fillCircle(x, y, radius)     → draw a filled circle
+//     g.fillRect(x, y, width, height), g.fillTriangle(...), g.lineBetween(...)
+// 💡 EXAMPLE: 0xff6eb4 = red ff (255, full), green 6e (110), blue b4 (180) → a bubblegum pink.
+// 🧠 QUIZ Q25: What colour is 0x00ff00? And 0xffffff?
+//
+// This file draws the map tiles that CHANGE (belts, plates, lasers), vision cones and objects (keys, items,
+// levers, terminals, donuts, socks). Floors/walls per zone are in art/themes.ts; characters in art/characters.ts.
+// =============================================================================
 import Phaser from 'phaser';
 import { CONFIG, KINDS, TILE } from '../sim/config';
 import type { Grid } from '../sim/grid';
@@ -93,6 +106,13 @@ export function drawDynamicTiles(g: G, w: World, list: number[], t: number): voi
 }
 
 /** Visibility polygon of a cone, stopped by walls. */
+// #region conePoints
+/**
+ * The shape of a vision cone, stopped by walls, as a list of points (a "fan" of rays).
+ * We shoot 29 rays spread across the cone; each ray walks forward 6 px at a time until it hits a wall or reaches
+ * the vision range. Joining the ray ends gives a cone that wraps neatly around walls and hedges.
+ * 💡 cos(angle) and sin(angle) turn an angle into a direction: cos(0) = 1, sin(0) = 0 → pointing right.
+ */
 export function conePoints(grid: Grid, x: number, y: number, look: number, range: number, half: number): Phaser.Math.Vector2[] {
   const pts = [V(x, y)];
   const rays = 28;
@@ -110,6 +130,9 @@ export function conePoints(grid: Grid, x: number, y: number, look: number, range
   return pts;
 }
 
+// #endregion conePoints
+
+/** Draw an alien's vision cone: yellow when calm, orange→red as the "?" meter fills, blue for drones. */
 export function drawCone(g: G, w: World, a: Alien): void {
   const k = KINDS[a.kind];
   if (k.vision <= 0) return;

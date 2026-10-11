@@ -1,3 +1,10 @@
+# =============================================================================
+# Campaign generator: draws all 12 levels as text grids and writes levels/drafts/<id>.mjs.
+#   python3 tools/gen-campaign.py          then for each draft:   node tools/draft-level.mjs levels/drafts/<id>.mjs
+# M(width, height) starts as solid wall; rect(...) carves floor, put(c, r, ch) places one character.
+# Legend: # wall  . floor  H hedge  G gate  ~ carpet  ! squeaky  ^ > v < belts  o plate  | laser  = shield
+#         P start  K key  I item  C checkpoint  L lever  T terminal  X sock (placed automatically)
+# =============================================================================
 import json, sys
 import os
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'levels', 'drafts') + '/'

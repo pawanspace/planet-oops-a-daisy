@@ -1,4 +1,21 @@
-// Runs the sim at a fixed 60 Hz and draws it. All game rules live in src/sim.
+// =============================================================================
+// 📘 LESSON: The Game Scene — the bridge between the RULES and the SCREEN
+// =============================================================================
+// The rules (src/sim/world.ts) only change numbers. This file turns those numbers into something you can see
+// and hear, about 60 times a second:
+//
+//   every frame:  1. ask the controls what's being pressed
+//                 2. step the world (maybe 0, 1 or 2 times — see "the game loop" below)
+//                 3. read the world's EVENTS (hug! skid! key!) and play sounds / show text / shake the camera
+//                 4. draw everything in its new place
+//
+// It uses Phaser, a free JavaScript game library. A Phaser "Scene" is one screen of the game (the title screen,
+// a level, a story scene...). Phaser calls our methods for us:
+//   init(data)  → once, with the level to play       create() → once, to set up the drawing layers and camera
+//   update(time, delta) → every frame, forever (delta = milliseconds since the last frame)
+//
+// 🧠 QUIZ Q20: Which file decides whether Leo got hugged: this one or world.ts? Which one plays the hug sound?
+// =============================================================================
 import Phaser from 'phaser';
 import { CONFIG, DT, TILE, type Difficulty } from '../sim/config';
 import type { LevelData } from '../sim/level';
@@ -15,6 +32,7 @@ import { sound } from './sound';
 import { Fx } from './fx';
 import { drawFlyer, themeBg, type Flyer, type ZoneTheme } from './art/themes';
 
+/** Everything the menu (main.ts) hands us when starting a level. */
 export interface SceneData {
   level: LevelData;
   difficulty: Difficulty;
@@ -25,6 +43,7 @@ export interface SceneData {
   theme?: ZoneTheme;
 }
 
+/** Funny things aliens shout. GameScene picks one when the matching event happens. 🧪 TRY IT: add your own lines! */
 const LINES = {
   spotted: ['HELLO FRIEND!', 'A TOURIST!', 'HUG TIME!', 'NOSE AND TOES SAME WAY?!', 'WAIT FOR MEEE!', 'SELFIE!'],
   suspicious: ['Hmm?', 'Huh?', 'Is that...?', 'Who\'s there?'],
@@ -131,6 +150,11 @@ export class GameScene extends Phaser.Scene {
     this.flyers = [0, 1, 2].map(i => ({ x: (mw * (i * 0.37 + 0.1)) % mw, y: mh * (0.2 + i * 0.3), vx: (i % 2 ? -1 : 1) * (30 + i * 12), phase: i * 2.1 }));
   }
 
+  /**
+   * Set up the drawing LAYERS. Like sheets of tracing paper stacked on top of each other, each Graphics object is
+   * drawn in the order it was added: ground first (bottom), then belts/lasers, skid marks, vision cones, characters,
+   * and effects on top. So a vision cone is drawn ON the floor but UNDER the aliens.
+   */
   create(): void {
     const w = this.world;
     this.cameras.main.setBackgroundColor(themeBg(this.theme));
@@ -174,6 +198,10 @@ export class GameScene extends Phaser.Scene {
     this.events.once('shutdown', () => this.scale.off('resize', this.fitZoom, this));
   }
 
+  /**
+   * Choose a camera zoom so about 17 × 11 tiles fit on screen, whatever the screen size.
+   * 💡 EXAMPLE: an iPad landscape view is 1180 × 820 CSS px. 17 tiles × 48 = 816 px wide → zoom ≈ 1180 / 816 ≈ 1.45.
+   */
   private fitZoom(): void {
     const { width, height } = this.scale;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -182,6 +210,25 @@ export class GameScene extends Phaser.Scene {
     if (this.introT <= 0) this.cameras.main.setZoom(this.baseZoom);
   }
 
+  // #region gameloop
+  /**
+   * 📘 THE GAME LOOP with a FIXED TIMESTEP.
+   *
+   * Screens refresh at different speeds: 60 times a second, 120 on a fancy iPad, slower if the computer is busy.
+   * If we moved Leo "a bit every frame", he'd go twice as fast on a 120 Hz screen! Instead the RULES always
+   * step in exact 1/60 s slices, and we keep a little "time bank" (`acc`, the accumulator):
+   *
+   *   each frame:  acc += real time that passed
+   *                while acc has at least 1/60 s in it:  step the world once, take 1/60 s out of acc
+   *
+   * 💡 EXAMPLE: on a 120 Hz screen each frame adds 1/120 s. Frame 1: acc = 0.0083, not enough, no step.
+   *    Frame 2: acc = 0.0167 → one step. So the world still steps 60 times per second. 🎉
+   *    On a slow 30 Hz moment each frame adds 1/30 s → TWO steps per frame. Still 60 per second.
+   *
+   * Juice tricks also live here: `hitstop` (freeze for a split second on a hug) simply stops adding to the bank,
+   * and `slowmo` adds only 35% of the real time, so the world runs at 35% speed for a moment.
+   * 🧠 QUIZ Q21: If the screen froze for 0.1 s, how many world steps would run on the next frame?
+   */
   update(_time: number, deltaMs: number): void {
     const w = this.world;
     const dt = Math.min(deltaMs, 100) / 1000;
@@ -199,6 +246,7 @@ export class GameScene extends Phaser.Scene {
       first = false;
       this.acc -= DT;
     }
+    // #endregion gameloop
     if (this.introT > 0) this.data_.controls.read(true); // swallow early button presses
     this.juice(dt);
     for (const e of w.drainEvents()) this.onEvent(e);
@@ -212,7 +260,11 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  /** Per-frame juice: camera punch, dust, skid marks, particles. */
+  /**
+   * Per-frame "juice": small effects that make the game feel alive, but don't change the rules.
+   * camera punch (a quick zoom that shrinks back), dust puffs, skid marks, heartbeat sound, footsteps...
+   * 💡 `this.punch *= Math.pow(0.02, dt)` shrinks the punch to 2% of its size every second: a smooth fade-out.
+   */
   private juice(dt: number): void {
     const w = this.world, cam = this.cameras.main;
     if (this.introT <= 0) {
@@ -264,6 +316,7 @@ export class GameScene extends Phaser.Scene {
     return own && this.lineIdx % 2 === 0 ? (this.pick(own)) : this.pick(LINES[kind]);
   }
 
+  /** Pop a speech bubble above a spot. A "tween" smoothly animates a value: here scale 0.4 → 1, then float up and fade. */
   private say(x: number, y: number, text: string, color = '#ffffff', size = 20): void {
     const label = this.add.text(x, y - 30, text, {
       fontFamily: 'Chalkboard SE, Comic Sans MS, sans-serif', fontSize: `${size}px`, fontStyle: 'bold',
@@ -273,6 +326,13 @@ export class GameScene extends Phaser.Scene {
     this.tweens.add({ targets: label, y: y - 64, alpha: 0, delay: 800, duration: 600, onComplete: () => label.destroy() });
   }
 
+  // #region onEvent
+  /**
+   * 📘 REACTING TO EVENTS. The world wrote down what happened ("hug by alien 2 at 300, 120"); here we decide how
+   * that LOOKS and SOUNDS: particles, a sound, a speech bubble, a camera shake, a split-second freeze.
+   * Keeping this separate from the rules means you can make the game look completely different without
+   * changing how it plays.
+   */
   private onEvent(e: GameEvent): void {
     const cam = this.cameras.main;
     const r = this.run;
@@ -327,6 +387,12 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  // #endregion onEvent
+
+  /**
+   * Draw one frame. Graphics objects are cleared and redrawn from scratch every frame ("immediate mode"),
+   * because everything moves. The ground is the exception: it's drawn once in create().
+   */
   private render(): void {
     const w = this.world, t = this.t;
     this.dyn.clear();
@@ -366,6 +432,8 @@ export class GameScene extends Phaser.Scene {
     const outfit = this.data_.outfit ?? DEFAULT_OUTFIT;
 
     // draw back-to-front so overlaps look right (drones fly on top)
+    // 📘 "Painter's algorithm": sort characters by their y position and draw the furthest-up first. Someone lower
+    // on the screen is "closer to the camera", so they're painted last and appear in front.
     const depth = (y: number, drone: boolean) => y + (drone ? 1e6 : 0);
     const order = w.aliens.map((a, i) => ({ a, i })).sort((u, v) => depth(u.a.y, u.a.kind === 'drone') - depth(v.a.y, v.a.kind === 'drone'));
     let playerDrawn = false;

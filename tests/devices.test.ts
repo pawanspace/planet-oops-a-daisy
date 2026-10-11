@@ -1,3 +1,5 @@
+// Tests for the level devices (belts, levers, plates, lasers, terminals, socks) and the special aliens.
+// See mechanics.test.ts for how tests work.
 import { describe, expect, it } from 'vitest';
 import { center, tileOf } from '../src/sim/grid';
 import { T } from '../src/sim/level';

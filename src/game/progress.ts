@@ -1,4 +1,13 @@
-// Saved progress beyond stars: outfits (unlocked by stars), socks found, lifetime stats and stickers.
+// =============================================================================
+// 📘 LESSON: Rewards — outfits, socks, stickers
+// =============================================================================
+// Everything here is saved in localStorage (see levels.ts). After every level, recordRun() adds that run's
+// numbers (hugs, donuts eaten, skids...) to lifetime STATS, then checks every sticker's `done` rule.
+// 💡 EXAMPLE: the 'Hug Magnet' sticker's rule is  s => s.hugs >= 10.  That's an "arrow function": give it the
+//    stats `s`, it answers true or false. Adding a sticker = adding one line to STICKERS.
+// 🧪 TRY IT: add a sticker { id: 'early', icon: '🐣', name: 'Early Bird', desc: 'Finish 1 level.', done: s => s.sneaky + s.fast >= 1 }
+// 🧠 QUIZ Q29: How many stars do you need to unlock the Pineapple Helmet?
+// =============================================================================
 import { CAMPAIGN } from '../sim/campaign';
 import type { Difficulty } from '../sim/config';
 import type { World } from '../sim/world';

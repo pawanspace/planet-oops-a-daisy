@@ -1,4 +1,7 @@
-// Dev-only character gallery: open the game with ?gallery to see every rig in every pose, big.
+// =============================================================================
+// Character gallery (a developer tool): open the game with ?gallery to see every character in every pose, big.
+// Great for checking art changes quickly. It builds "fake" aliens that are never part of a real World.
+// =============================================================================
 import Phaser from 'phaser';
 import type { AlienKind } from '../sim/config';
 import type { Alien, AlienState, Player } from '../sim/world';

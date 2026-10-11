@@ -1,4 +1,17 @@
-// Keyboard + touch controls -> sim Input. Gadget presses are queued and consumed once.
+// =============================================================================
+// 📘 LESSON: Turning key presses and finger touches into an `Input`
+// =============================================================================
+// The browser tells us about the keyboard with EVENTS: "keydown: ArrowRight", later "keyup: ArrowRight".
+// We remember which keys are currently HELD in a Set. Every world step, read() turns that into an Input:
+//   holding → and ↑   gives   { x: 1, y: -1 }        (the world then normalises the diagonal)
+//
+// Gadgets are different: pressing 1 once should honk ONCE, not 60 times a second while the key is down.
+// So gadget presses go into a "queue" and are used up by the very next step ("edge-triggered" input).
+//
+// Touch screens: the thumb stick is a circle. Where your finger is, relative to its centre, becomes x and y.
+// 💡 EXAMPLE: the stick is 170 px wide (radius 85). A finger 42 px right of centre → x = 42 / 85 ≈ 0.5: half speed.
+// 🧠 QUIZ Q22: Why is there a "dead zone" (0.18) in the middle of the stick?
+// =============================================================================
 import { NO_INPUT, type Input } from '../sim/world';
 
 type Gadget = 'honk' | 'moonwalk' | 'donut';
@@ -73,6 +86,10 @@ export class Controls {
   }
 
   /** Input for one sim step. Pass consumeGadgets=false for extra steps within the same frame. */
+  /**
+   * Build the Input for one world step. `consumeGadgets` is true only for the first step of a frame, so a
+   * single button press can never fire twice (some frames run two steps — see the game loop in GameScene).
+   */
   read(consumeGadgets: boolean): Input {
     const h = this.held;
     let x = (h.has('right') ? 1 : 0) - (h.has('left') ? 1 : 0);

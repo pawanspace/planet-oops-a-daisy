@@ -1,4 +1,19 @@
-// Comic-style story scenes: the opening, zone cutscenes and the ending. Tap / click / any key to advance.
+// =============================================================================
+// 📘 LESSON: Telling a story with a script of "panels"
+// =============================================================================
+// A story scene is a list of PANELS, like a comic book. Each panel has:
+//   dur   → how long it lasts (seconds)
+//   draw  → a function that paints the panel at time t (so things can move: the ship flies, Blorp runs...)
+//   lines → speech bubbles that pop in at a given time ("at: 2.3")
+//   beats → other things that happen at a time (a sound, a camera shake)
+// The scene plays panels one after another. Tapping skips ahead. This is DATA again: to change the story you
+// edit the SCRIPTS list, not the code that plays it.
+//
+// 💡 lerp(a, b, k) = "linear interpolation": the value k of the way from a to b.
+//    lerp(100, 200, 0.25) = 125. We use it with k = t / duration to slide things smoothly across the screen.
+// 🧪 TRY IT: add your own line to the intro: { at: 1.0, who: 'leo', text: 'Hello!', x: 480, y: 300 }
+// 🧠 QUIZ Q28: What is lerp(0, 10, 0.5)? And lerp(50, 0, 0.2)?
+// =============================================================================
 import Phaser from 'phaser';
 import type { AlienKind } from '../sim/config';
 import type { Alien, AlienState, Player } from '../sim/world';

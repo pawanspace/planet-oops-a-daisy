@@ -1,4 +1,14 @@
-// Scenery for the title screen and story scenes: space, the daisy planet, the ship, bushes, mailbox.
+// =============================================================================
+// 📘 LESSON: Scenery for the title screen and story scenes
+// =============================================================================
+// Space, the daisy planet, Leo's ship, bushes and a mailbox, all drawn with shapes (see draw.ts for the basics).
+// Two tricks worth knowing:
+//   • STARS that don't move: we don't store 120 star positions. A "hash" function turns the star's number into
+//     a pseudo-random but ALWAYS THE SAME position, so the sky looks random yet never jumps around.
+//   • ROTATION by hand: drawShip uses   x' = x·cos(a) − y·sin(a),   y' = x·sin(a) + y·cos(a)
+//     to turn every point of the ship by angle a (so it can tumble during the crash!).
+// 🧠 QUIZ Q27: Rotating the point (1, 0) by 90° (π/2) gives which point?
+// =============================================================================
 import Phaser from 'phaser';
 
 type G = Phaser.GameObjects.Graphics;

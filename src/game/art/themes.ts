@@ -1,5 +1,15 @@
-// Zone looks: floors, walls, obstacles (the "hedge" tile), floor decorations and background life.
-// Purely visual: the same tile codes play identically in every zone.
+// =============================================================================
+// 📘 LESSON: One set of rules, four different looks ("themes")
+// =============================================================================
+// A wall is a wall in every zone (same rules!), but it LOOKS like a garden fence in Suburbia, lockers at School,
+// bricks in the Market and metal panels at the Spaceport. This file swaps the artwork only.
+//
+// Decorations (gnomes, backpacks, bananas, vents...) are placed by a HASH of the tile position:
+//   hash(c, r) gives a number from 0 to 1 that looks random but is always the same for that tile.
+//   If hash > 0.88 (about 12% of floor tiles), we draw a decoration there.
+// So decorations are "random" but the same every time you play, and level designers never have to place them.
+// 🧪 TRY IT: change 0.88 in drawThemedGround to 0.5. Gnome invasion!
+// =============================================================================
 import Phaser from 'phaser';
 import { TILE } from '../../sim/config';
 import type { Grid } from '../../sim/grid';

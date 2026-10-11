@@ -1,4 +1,18 @@
-// Render-only effects: particles and floor decals (skid marks). Never touches the sim.
+// =============================================================================
+// 📘 LESSON: Particles — lots of tiny things that live for a moment
+// =============================================================================
+// Confetti, dust puffs, hearts, stars... are all PARTICLES: tiny objects with a position, a velocity, a lifetime
+// and a look. Every frame each particle:
+//     moves:          x += vx × dt,   y += vy × dt
+//     feels gravity:  vy += gravity × dt        (confetti falls, hearts float up with negative gravity)
+//     ages:           life -= dt                (and disappears at 0)
+// A "burst" creates many at once, flying in random directions.
+//
+// 💡 EXAMPLE: a confetti piece starts with vy = -220 (flying up) and gravity 260. After 0.5 s, vy = -220 + 130
+//    = -90: still rising but slowing down. After about 0.85 s it starts to fall. That's a nice arc!
+// 🧪 TRY IT: in GameScene's 'win' case, change the confetti count from 60 to 600.
+// 🧠 QUIZ Q23: Particles never change the game rules. Why is it fine that they use random numbers then?
+// =============================================================================
 import Phaser from 'phaser';
 
 type G = Phaser.GameObjects.Graphics;

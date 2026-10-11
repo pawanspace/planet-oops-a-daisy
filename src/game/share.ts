@@ -1,4 +1,8 @@
+// =============================================================================
 // "Share card": a square picture of the last level result, with a snapshot of the game.
+// It draws onto an invisible <canvas> with the browser's 2D drawing API (similar to Phaser's Graphics), turns it
+// into a PNG file, then uses the share sheet (iPad/phone) or downloads it (computer).
+// =============================================================================
 import type Phaser from 'phaser';
 
 export interface ShareInfo { name: string; stars: number; time: number; chased: number; sock: boolean }

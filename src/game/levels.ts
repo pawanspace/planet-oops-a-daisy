@@ -1,4 +1,10 @@
-// Level registry. Maps are Tiled .tmj files in /levels, bundled at build time.
+// =============================================================================
+// Level registry + saved stars.
+// Maps are Tiled .tmj files in /levels. `import.meta.glob` is a Vite feature that finds every matching file when
+// the game is BUILT and bundles them in, so adding a new level file is enough for the game to see it.
+// Stars are saved in the browser's localStorage: a small notebook each website can write to, which survives
+// closing the browser. 💡 localStorage only stores text, so we turn objects into JSON text and back.
+// =============================================================================
 import { CAMPAIGN } from '../sim/campaign';
 import { loadTiled, type LevelData, type TiledMap } from '../sim/level';
 

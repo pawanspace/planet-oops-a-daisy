@@ -1,5 +1,24 @@
-// Side-view character rigs drawn with Phaser Graphics every frame.
-// The joke made visible: locals' faces look one way while their knees and toes point the other.
+// =============================================================================
+// 📘 LESSON: Characters made of circles, sticks and SINE WAVES
+// =============================================================================
+// Leo and every alien are drawn from scratch every frame out of simple shapes: a round body, two eyes, an
+// antenna, and legs made of two sticks (thigh + shin) joined at a knee. Puppeteers call this a "rig".
+//
+// The joke made visible: locals' faces look one way while their knees and toes point the OTHER way.
+//   face = +1 means "looking right";  toe = -face means the toes point left. Leo's toes point the same way as his
+//   face (how weird!), except while moonwalking.
+//
+// HOW WALKING WORKS: a sine wave! Math.sin(phase) smoothly swings between -1 and +1 as `phase` grows:
+//     phase:   0     π/2    π     3π/2    2π
+//     sin:     0      1     0      -1      0      (and repeats forever)
+//   Each foot's position is  x + toe × sin(phase) × 7 px. The second leg uses phase + π, so it's always
+//   exactly opposite: when one foot is forward, the other is back. The faster `phase` grows, the faster the walk.
+//   Lifting the foot uses max(0, cos(phase)): the foot only rises during half the step.
+//
+// 💡 EXAMPLE: a chasing alien adds about 36 to its phase every second → 36 / 2π ≈ 5.7 steps per second.
+// 🧪 TRY IT: in legs(), change the 7 (stride length) to 14. Giant clown steps!
+// 🧠 QUIZ Q26: If the second leg used `phase` instead of `phase + π`, what would the walk look like?
+// =============================================================================
 import Phaser from 'phaser';
 import { KINDS } from '../../sim/config';
 import type { Alien, Player } from '../../sim/world';
@@ -38,6 +57,7 @@ function limb(g: G, x1: number, y1: number, x2: number, y2: number, w: number, c
  * Two legs. `toe` is where knees and toes point (+1 right / -1 left). `phase` drives the walk cycle,
  * `stride` 0..1 is how big the steps are. `tangle` crosses the legs (after a skid).
  */
+// #region legs
 function legs(g: G, x: number, y: number, s: number, toe: number, phase: number, stride: number,
   leg: number, shoe: number, shoeToe: number, tangle = 0): void {
   for (const i of [0, 1]) {
@@ -63,6 +83,9 @@ function shadow(g: G, x: number, y: number, w: number): void {
 // -----------------------------------------------------------------------------
 // Aliens
 // -----------------------------------------------------------------------------
+// #endregion legs
+
+/** Which way an alien faces (+1 / -1) and how far through its walk cycle it is (render-only, kept by GameScene). */
 export interface AlienPose { face: number; walk: number }
 
 /** Remembers which way each alien faces so it doesn't flicker when looking straight up/down. */

@@ -1,3 +1,8 @@
+// =============================================================================
+// Test helpers: build tiny levels from text pictures, then run the real rules on them.
+// 💡 EXAMPLE:  ascii(['#####', '#P.K#', '#####'])  is a 5×3 level with Leo, one floor tile and a key.
+//    run(world, 1, { x: 1 })  holds RIGHT for 1 second (60 steps).
+// =============================================================================
 import { TILE } from '../src/sim/config';
 import { center } from '../src/sim/grid';
 import { T, emptyLevel, type AlienKind, type AlienSpec, type LevelData, type TileCode } from '../src/sim/level';

@@ -1,4 +1,22 @@
-// Procedural sound effects (Web Audio) + background music (CC0 tracks by Juhani Junkala, see public/music/CREDITS.txt).
+// =============================================================================
+// 📘 LESSON: Making sounds out of maths (and playing music)
+// =============================================================================
+// Most sound effects here aren't recordings: they're GENERATED with the Web Audio API that every browser has.
+//
+//   An OSCILLATOR makes a tone: a wave that wiggles a speaker back and forth `frequency` times per second.
+//     • 440 wiggles per second (440 Hz) is the musical note A. Double it (880) and you get A one octave higher.
+//     • The wave's shape changes the sound: 'sine' is smooth and soft, 'square' is buzzy like an old video game,
+//       'sawtooth' is harsh, 'triangle' is in between.
+//   A GAIN node is a volume knob. Turning it down quickly ("exponential ramp") makes a tone go "blip".
+//
+// 💡 EXAMPLE: the honk plays two square waves at once, 440 Hz and 554 Hz (the notes A and C#), for 0.22 s.
+//    Two notes together like that is what makes it sound like a silly clown horn.
+//
+// The MUSIC is real recorded tracks (free CC0 music by Juhani Junkala). Each plays through its own gain node so
+// we can crossfade: when you're spotted, the calm zone music fades down and the chase music fades up.
+// 🧪 TRY IT: change the honk's 440 to 220. What happens to the sound?
+// 🧠 QUIZ Q24: A sound wave at 1000 Hz wiggles how many times in 0.1 seconds?
+// =============================================================================
 
 type Wave = OscillatorType;
 export type TrackId = 'menu' | 'suburbia' | 'school' | 'market' | 'spaceport' | 'chase' | 'story' | 'ending';
@@ -92,6 +110,11 @@ export class Sound {
     return this.sfxOn;
   }
 
+  // #region tone
+  /**
+   * Play one tone: a `type` wave that slides from frequency f0 to f1 over `dur` seconds, starting at volume `vol`
+   * and fading to silence. Almost every sound effect is built from a few of these.
+   */
   private tone(type: Wave, f0: number, f1: number, dur: number, vol: number, delay = 0, ramp: 'exp' | 'lin' = 'exp'): void {
     const ctx = this.ctx;
     if (!ctx || !this.sfxOn) return;
@@ -108,6 +131,9 @@ export class Sound {
     osc.stop(t + dur + 0.02);
   }
 
+  // #endregion tone
+
+  /** A burst of random "white noise" through a filter: good for skids, swooshes and grass footsteps. */
   private noiseBurst(dur: number, vol: number, f0: number, f1: number): void {
     const ctx = this.ctx;
     if (!ctx || !this.sfxOn) return;
