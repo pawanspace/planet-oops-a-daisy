@@ -35,6 +35,12 @@ saved in the browser.
 * The campaign order lives in `src/sim/campaign.ts`.
 * `npm test` validates every map and has bots play every level on every difficulty.
 
+## Learn how it works
+
+New to making games? See **[LEARN.md](LEARN.md)**. Every source file has teaching comments (lessons, worked examples,
+quizzes), and **Oops Academy** (`/learn.html`, or 🎓 on the title screen) is an interactive course with live demos running
+the real game code, sliders, quizzes and coding challenges.
+
 ## Extras
 
 * Opening comic, zone cutscenes and an ending (`src/game/StoryScene.ts`); living title screen (`TitleScene.ts`).

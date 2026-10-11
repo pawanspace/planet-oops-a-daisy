@@ -121,3 +121,4 @@ body:not(.playing) #vignette { display: none; }
 #splash img { width: 160px; height: 160px; border-radius: 36px; animation: wobble 1.6s ease-in-out infinite; }
 #splash span { font-size: 16px; opacity: 0.7; }
 #splash.gone { opacity: 0; pointer-events: none; }
+#panel a.btnlink { border: 3px solid var(--ink); background: #fff; border-radius: 14px; padding: 6px 12px; font-size: 14px; font-weight: bold; color: var(--ink); text-decoration: none; }

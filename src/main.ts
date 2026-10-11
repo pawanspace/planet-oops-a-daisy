@@ -113,7 +113,7 @@ function showHome(): void {
     <p class="sub">Everyone's legs face backwards. <b>Their eyes look where they've been</b>, not where they're going.</p>
     <div class="row"><button data-act="levels" class="primary big">▶ PLAY</button></div>
     <div class="row diffs">${diffs}</div>
-    <div class="row"><button data-act="wardrobe" class="small">👕 Wardrobe</button><button data-act="stickers" class="small">📒 Stickers ${stickersEarned().size}/${STICKERS.length}</button><button data-act="intro" class="small">🎬 Intro</button></div>
+    <div class="row"><button data-act="wardrobe" class="small">👕 Wardrobe</button><button data-act="stickers" class="small">📒 Stickers ${stickersEarned().size}/${STICKERS.length}</button><button data-act="intro" class="small">🎬 Intro</button><a class="small btnlink" href="learn.html">🎓 How it's made</a></div>
     <p class="total">⭐ ${total} / ${CAMPAIGN.length * 9} · 🚀 Ship parts ${shipParts().filter(Boolean).length}/4 · 🧦 ${socksFound().size}/12</p>`);
 }
 
